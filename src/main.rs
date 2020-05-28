@@ -265,7 +265,7 @@ fn main() {
         data[i].position = [
             rng.gen_range(-1.0,1.0),
             rng.gen_range(-1.0,1.0),
-            rng.gen_range(0.2,1.0),
+            rng.gen_range(0.2,0.9),
         ]
     }
 

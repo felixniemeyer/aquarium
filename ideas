@@ -1,0 +1,24 @@
+
+- fish photo shooting: 
+	- gPhoto: libgphoto2 supports eos 600D
+		- gphoto2 
+			--camera="Canon EOS 600D" 
+			--capture-image-and-download 
+			--filename=asd 
+			--no-keep
+		- auto-Abschalten deaktivieren. Sonst disconnected sie usb 
+
+- fish photo processing: 
+	- python + pillow => PIL.Image.composite
+	- then transform to 1024x1024 png
+
+- load into fish styler
+	- appearance: 
+		- skin color
+		- all axis scale
+		- surface constant [has to equal] pow(size,2) * amount
+	- behaviour
+		- swarm factor 
+	- Ok saves it to the aquarium fish folder
+
+

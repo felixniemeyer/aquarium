@@ -1,0 +1,7 @@
+- geometry shader particle draw
+	- for now: positions from Vertex Data
+
+- generate 3D 32x32 fish movement noise
+
+- compute particle system
+	- for now: ein Fisch-Schwarm

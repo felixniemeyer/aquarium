@@ -12,5 +12,6 @@ layout(push_constant) uniform PushConstantData {
 layout(set = 0, binding = 0) uniform sampler2D fish_skin; 
 
 void main() {
- 	f_color = vec4(0.1) + texture(fish_skin, uv) * 0.9; 
+ 	f_color = texture(fish_skin, uv); 
+ 	// f_color = vec4(0.1) + texture(fish_skin, uv) * 0.9; 
 }

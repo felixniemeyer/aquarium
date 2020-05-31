@@ -1,7 +1,17 @@
-- geometry shader particle draw
-	- for now: positions from Vertex Data
+- Basic graphic functionality
+	- geometry shader particle draw
+		- for now: positions from Vertex Data
+	- generate 3D 32x32 fish movement noise
+		- first: draw a quad that debug outputs the 32 slices of the flux cube
+		- compute shader to image? 
+			- yes: https://community.khronos.org/t/drawing-to-image-from-compute-shader-example/7116
+	- compute particle system
+		- for now: ein Fisch-Schwarm
+	- camera & perspective matrix
+	- particle ordering
+	- distance fog
+	- overall strategy: 
+		- 3d texture 1024 x 1024 x 32 for the fish skin
+			- rotating override (when the 33rd species is added, it replaces the first species added) 
 
-- generate 3D 32x32 fish movement noise
-
-- compute particle system
-	- for now: ein Fisch-Schwarm
+- Load on file addition

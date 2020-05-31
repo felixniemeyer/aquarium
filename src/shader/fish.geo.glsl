@@ -34,7 +34,7 @@ void main() {
 		p = i * 1.0 / fragments;
 
 		// calculate z based on sin, then choose x so that the fish length does not get distorted
-		z = pow(p, 1.5) * sin(180.0 * p + pc.time * 0.005) * waves;
+		z = pow(p, 1.5) * sin(180.0 * p + pc.time * 0.005 + gl_PrimitiveIDIn) * waves;
 		dz = z - prev_z; 
 		dx = sqrt(c_square - dz * dz); 
 

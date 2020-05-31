@@ -10,7 +10,10 @@ use vulkano::{
     pipeline::{
         GraphicsPipeline, 
         viewport::Viewport, 
-        ComputePipeline,
+        // ComputePipeline,
+		vertex::{
+			SingleBufferDefinition
+		}
     },
 
     device::{
@@ -218,12 +221,18 @@ fn main() {
     };
 
     // Vertex types
-
     #[derive(Default, Debug, Clone, Copy)]
     struct Vertex { 
         position: [f32; 3]
     }
     vulkano::impl_vertex!(Vertex, position); 
+
+    #[derive(Default, Debug, Clone, Copy)]
+    struct Vertex2DTextured {
+        position: [f32; 2],
+		uv: [f32; 2]
+    }
+    vulkano::impl_vertex!(Vertex2DTextured, position, uv); 
 
     ///////////////
     // fish draw //
@@ -283,12 +292,6 @@ fn main() {
     /////////////////////
     // debug draw flux //
     /////////////////////
-    #[derive(Default, Debug, Clone, Copy)]
-    struct Vertex2DTextured {
-        position: [f32; 2], 
-        uv: [f32; 2],
-    }
-    vulkano::impl_vertex!(Vertex2DTextured, position, uv); 
 
     let debug_draw_flux_vertex_buffer = {
         CpuAccessibleBuffer::from_iter(
@@ -303,7 +306,6 @@ fn main() {
             ].iter().cloned()
         ).unwrap();
     };
-
 
     #[allow(dead_code)] // Used to force recompilation of shader change
     const SFISH0: &str = include_str!("./shader/fish.vs.glsl");
@@ -386,7 +388,7 @@ fn main() {
     ).unwrap());
 
     let fish_pipeline = Arc::new(GraphicsPipeline::start()
-        .vertex_input_single_buffer::<Vertex>()
+        .vertex_input(SingleBufferDefinition::<Vertex>::new())
         .vertex_shader(fish_vs.main_entry_point(), ())
         .geometry_shader(fish_gs.main_entry_point(), ())
         .point_list()
@@ -398,17 +400,17 @@ fn main() {
         .unwrap()
     ); 
 
-    let sampler = Sampler::new(device.clone(), Filter::Linear, Filter::Linear, 
+    let fish_skin_sampler = Sampler::new(device.clone(), Filter::Linear, Filter::Linear, 
         MipmapMode::Nearest, SamplerAddressMode::Repeat, SamplerAddressMode::Repeat, 
         SamplerAddressMode::Repeat, 0.0, 1.0, 0.0, 0.0).unwrap(); 
 
     let fish_desc_set = Arc::new(PersistentDescriptorSet::start(fish_pipeline.layout().descriptor_set_layout(0).unwrap().clone())
-        .add_sampled_image(autumn_texture.clone(), sampler.clone()).unwrap()
+        .add_sampled_image(autumn_texture.clone(), fish_skin_sampler.clone()).unwrap()
         .build().unwrap()
     );
 
     let debug_draw_flux_pipeline = Arc::new(GraphicsPipeline::start()
-        .vertex_input_single_buffer::<Vertex2DTextured>()
+        .vertex_input(SingleBufferDefinition::<Vertex2DTextured>::new())
         .vertex_shader(general_2d_vs.main_entry_point(), ())
         .triangle_strip()
         .viewports_dynamic_scissors_irrelevant(1)
@@ -419,12 +421,18 @@ fn main() {
         .unwrap()
     );
 
-    //TODO: Sampler for the flux 3d image
+	let flux_sampler = Sampler::new(
+		device.clone(), 
+		Filter::Linear, Filter::Linear, 
+		MipmapMode::Nearest, 
+		SamplerAddressMode::Repeat, SamplerAddressMode::Repeat, SamplerAddressMode::Repeat, 
+		0.0, 1.0, 0.0, 0.0
+	).unwrap();
 
-   // let debug_draw_flux_desc_set = Arc::new(PersistentDescriptorSet::start(debug_draw_flux_pipeline.layout().descriptor_set_layout(0).unwrap().clone())
-   //     // .add_sampled_image(autumn_texture.clone(), sampler.clone()).unwrap()
-   //     .build().unwrap()
-   // );
+    //let debug_draw_flux_desc_set = Arc::new(PersistentDescriptorSet::start(debug_draw_flux_pipeline.layout().descriptor_set_layout(0).unwrap().clone())
+    //    .add_sampled_image(autumn_texture.clone(), flux_sampler.clone()).unwrap()
+    //    .build().unwrap()
+    //);
 
     // let compute_pipeline = Arc::new(
     //     ComputePipeline::new(device.clone(), &flux_cp.main_entry_point(), &()).unwrap()
@@ -463,7 +471,6 @@ fn main() {
     let t0 = time::SystemTime::now(); 
     let mut now = t0; 
     let mut then = t0;
-
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -524,13 +531,13 @@ fn main() {
                         fish_desc_set.clone(), 
                         fish_push_constants)
                     .unwrap()
-                    // .draw(
-                    //     fish_pipeline.clone(), 
-                    //     &dynamic_state, 
-                    //     fish_vertex_buffer.clone(), 
-                    //     fish_desc_set.clone(), 
-                    //     ()
-                    // )
+                    //.draw(
+                    //    debug_draw_flux_pipeline.clone(), 
+                    //    &dynamic_state, 
+                    //    debug_draw_flux_vertex_buffer.clone(), 
+                    //    fish_desc_set.clone(), 
+                    //    ()
+                    //)
                     //.unwrap()
                     .end_render_pass()
                     .unwrap()

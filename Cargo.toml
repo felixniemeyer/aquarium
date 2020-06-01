@@ -10,8 +10,8 @@ edition = "2018"
 vulkano = "0.18.0"
 vulkano-shaders = "0.18.0"
 vulkano-win = "0.18.0"
+winit = "0.22.2"
 
 image = "^0.23.4"
 
 rand = "^0.7.3"
-winit = "0.22.2"

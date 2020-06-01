@@ -110,14 +110,28 @@ mod cs {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-struct Particle {
-    pos: [f32; 2],
-    speed: [f32; 2],
-    tail: [f32; 2],
-    prev_pos: [f32; 2],
-    prev_tail: [f32; 2],
+//#[derive(Copy, Clone, Debug)]
+//struct Particle {
+//    pos: [f32; 2],
+//    speed: [f32; 2],
+//    tail: [f32; 2],
+//    prev_pos: [f32; 2],
+//    prev_tail: [f32; 2],
+//}
+
+// Vertex types
+#[derive(Default, Debug, Clone, Copy)]
+struct Vertex { 
+    position: [f32; 3]
 }
+vulkano::impl_vertex!(Vertex, position); 
+
+#[derive(Default, Debug, Clone, Copy)]
+struct VertexTwoDTex {
+	position: [f32; 2],
+	uv: [f32; 2],
+}
+vulkano::impl_vertex!(VertexTwoDTex, position, uv); 
 
 fn main() {
      const FLUX_RES: u32 = 32; 
@@ -220,93 +234,25 @@ fn main() {
         .expect("failed to create swapchain")
     };
 
-    // Vertex types
-    #[derive(Default, Debug, Clone, Copy)]
-    struct Vertex { 
-        position: [f32; 3]
-    }
-    vulkano::impl_vertex!(Vertex, position); 
-
-    #[derive(Default, Debug, Clone, Copy)]
-    struct Vertex2DTextured {
-        position: [f32; 2],
-		uv: [f32; 2]
-    }
-    vulkano::impl_vertex!(Vertex2DTextured, position, uv); 
-
-    ///////////////
-    // fish draw //
-    ///////////////
-    let mut data: [Vertex; 128] = unsafe { MaybeUninit::uninit().assume_init() }; // unsafe {  }; //unsafe :D
-    let mut rng = thread_rng();
-    for i in 0..data.len() {
-        data[i].position = [
-            rng.gen_range(-1.0,1.0),
-            rng.gen_range(-1.0,1.0),
-            rng.gen_range(0.2,0.9),
-        ]
-    }
-
-    let fish_vertex_buffer = CpuAccessibleBuffer::from_iter(
-        device.clone(), 
-        BufferUsage::all(), 
-        false, 
-        data.iter().cloned()
-    ).unwrap();
-
-    let img_dim = img.dimensions();
-    let (autumn_texture, autumn_texture_future) = match ImmutableImage::from_iter(
-        img.as_rgba8().unwrap().pixels().map(|rgba| {
-            let bytes : [u8; 4] = [rgba[0], rgba[1], rgba[2], rgba[3]]; 
-            bytes
-        }),
-        Dimensions::Dim2d { width: img_dim.0, height: img_dim.1 },
-        Format::R8G8B8A8Unorm, 
-        queue.clone()
-    ) {
-        Ok(i) => i, 
-        Err(err) => panic!("{:?}", err)
-    };
-
-
-    //////////////
-    // flux gen //
-    //////////////
-    let mut image_usage = ImageUsage::none(); 
-    image_usage.storage = true; 
-    let flux = match StorageImage::with_usage(
+    let render_pass = Arc::new(vulkano::single_pass_renderpass!(
         device.clone(),
-        Dimensions::Dim3d { 
-            width: FLUX_RES,    
-            height: FLUX_RES, 
-            depth: FLUX_RES 
+        attachments: {
+            color: {
+                load: Clear,
+                store: Store,
+                format: swapchain.format(),
+                samples: 1,
+            }
         },
-        Format::R8G8B8A8Unorm,
-        image_usage,
-        std::iter::once(queue_family)
-    ) {
-        Ok(i) => i,
-        Err(err) => panic!("{:?}", err)
-    };
+        pass: {
+            color: [color],
+            depth_stencil: {}
+        }
+    ).unwrap());
 
-    /////////////////////
-    // debug draw flux //
-    /////////////////////
-
-    let debug_draw_flux_vertex_buffer = {
-        CpuAccessibleBuffer::from_iter(
-            device.clone(), 
-            BufferUsage::all(), 
-            false, 
-            [
-                Vertex2DTextured { position: [-0.5, -0.5], uv: [0.0, 0.0] },
-                Vertex2DTextured { position: [-0.5,  0.5], uv: [0.0, 1.0] },
-                Vertex2DTextured { position: [ 0.5, -0.5], uv: [1.0, 0.0] },
-                Vertex2DTextured { position: [ 0.5,  0.5], uv: [1.0, 1.0] }
-            ].iter().cloned()
-        ).unwrap();
-    };
-
+	/////////////
+	// shaders //
+	/////////////
     #[allow(dead_code)] // Used to force recompilation of shader change
     const SFISH0: &str = include_str!("./shader/fish.vs.glsl");
     mod fish_vs { 
@@ -371,21 +317,9 @@ fn main() {
     let debug_draw_flux_fs = debug_draw_flux_fs::Shader::load(device.clone()).unwrap(); 
 
 
-    let render_pass = Arc::new(vulkano::single_pass_renderpass!(
-        device.clone(),
-        attachments: {
-            color: {
-                load: Clear,
-                store: Store,
-                format: swapchain.format(),
-                samples: 1,
-            }
-        },
-        pass: {
-            color: [color],
-            depth_stencil: {}
-        }
-    ).unwrap());
+	/////////////// 
+	// pipelines // 
+	///////////////
 
     let fish_pipeline = Arc::new(GraphicsPipeline::start()
         .vertex_input(SingleBufferDefinition::<Vertex>::new())
@@ -404,13 +338,9 @@ fn main() {
         MipmapMode::Nearest, SamplerAddressMode::Repeat, SamplerAddressMode::Repeat, 
         SamplerAddressMode::Repeat, 0.0, 1.0, 0.0, 0.0).unwrap(); 
 
-    let fish_desc_set = Arc::new(PersistentDescriptorSet::start(fish_pipeline.layout().descriptor_set_layout(0).unwrap().clone())
-        .add_sampled_image(autumn_texture.clone(), fish_skin_sampler.clone()).unwrap()
-        .build().unwrap()
-    );
 
     let debug_draw_flux_pipeline = Arc::new(GraphicsPipeline::start()
-        .vertex_input(SingleBufferDefinition::<Vertex2DTextured>::new())
+        .vertex_input(SingleBufferDefinition::<VertexTwoDTex>::new())
         .vertex_shader(general_2d_vs.main_entry_point(), ())
         .triangle_strip()
         .viewports_dynamic_scissors_irrelevant(1)
@@ -421,18 +351,6 @@ fn main() {
         .unwrap()
     );
 
-	let flux_sampler = Sampler::new(
-		device.clone(), 
-		Filter::Linear, Filter::Linear, 
-		MipmapMode::Nearest, 
-		SamplerAddressMode::Repeat, SamplerAddressMode::Repeat, SamplerAddressMode::Repeat, 
-		0.0, 1.0, 0.0, 0.0
-	).unwrap();
-
-    //let debug_draw_flux_desc_set = Arc::new(PersistentDescriptorSet::start(debug_draw_flux_pipeline.layout().descriptor_set_layout(0).unwrap().clone())
-    //    .add_sampled_image(autumn_texture.clone(), flux_sampler.clone()).unwrap()
-    //    .build().unwrap()
-    //);
 
     // let compute_pipeline = Arc::new(
     //     ComputePipeline::new(device.clone(), &flux_cp.main_entry_point(), &()).unwrap()
@@ -453,6 +371,104 @@ fn main() {
     //     .build()
     //     .unwrap();
 
+
+    ///////////////
+    // fish draw //
+    ///////////////
+    let mut data: [Vertex; 128] = unsafe { MaybeUninit::uninit().assume_init() }; // unsafe {  }; //unsafe :D
+    let mut rng = thread_rng();
+    for i in 0..data.len() {
+        data[i].position = [
+            rng.gen_range(-1.0,1.0),
+            rng.gen_range(-1.0,1.0),
+            rng.gen_range(0.2,0.9),
+        ]
+    }
+
+    let fish_vertex_buffer = CpuAccessibleBuffer::from_iter(
+        device.clone(), 
+        BufferUsage::all(), 
+        false, 
+        data.iter().cloned()
+    ).unwrap();
+
+    let img_dim = img.dimensions();
+    let (autumn_texture, autumn_texture_future) = match ImmutableImage::from_iter(
+        img.as_rgba8().unwrap().pixels().map(|rgba| {
+            let bytes : [u8; 4] = [rgba[0], rgba[1], rgba[2], rgba[3]]; 
+            bytes
+        }),
+        Dimensions::Dim2d { width: img_dim.0, height: img_dim.1 },
+        Format::R8G8B8A8Unorm, 
+        queue.clone()
+    ) {
+        Ok(i) => i, 
+        Err(err) => panic!("{:?}", err)
+    };
+
+    let fish_desc_set = Arc::new(PersistentDescriptorSet::start(fish_pipeline.layout().descriptor_set_layout(0).unwrap().clone())
+        .add_sampled_image(autumn_texture.clone(), fish_skin_sampler.clone()).unwrap()
+        .build().unwrap()
+    );
+
+    ////////////////
+    //// flux gen //
+    ////////////////
+	
+    let mut image_usage = ImageUsage::none();
+    image_usage.storage = true; 
+	image_usage.sampled = true;
+    let flux = match StorageImage::with_usage(
+        device.clone(),
+        Dimensions::Dim3d { 
+            width: FLUX_RES,    
+            height: FLUX_RES, 
+            depth: FLUX_RES 
+        },
+        Format::R8G8B8A8Unorm,
+		image_usage,
+        Some(queue.family())
+    ) {
+        Ok(i) => i,
+        Err(err) => panic!("{:?}", err)
+    };
+
+
+    /////////////////////
+    // debug draw flux //
+    /////////////////////
+    let debug_draw_flux_vertex_buffer = CpuAccessibleBuffer::from_iter(
+		device.clone(), 
+		BufferUsage::all(), 
+		false, 
+		[
+			VertexTwoDTex { position: [-0.5, -0.5], uv: [0.0, 0.0] },
+			VertexTwoDTex { position: [-0.5,  0.5], uv: [0.0, 1.0] },
+			VertexTwoDTex { position: [ 0.5, -0.5], uv: [1.0, 0.0] },
+			VertexTwoDTex { position: [ 0.5,  0.5], uv: [1.0, 1.0] },
+		].iter().cloned()
+	).unwrap();
+
+	let flux_sampler = Sampler::new(
+		device.clone(), 
+		Filter::Linear, Filter::Linear, 
+		MipmapMode::Nearest, 
+		SamplerAddressMode::ClampToEdge,
+		SamplerAddressMode::ClampToEdge,
+		SamplerAddressMode::ClampToEdge,
+		0.0, 1.0, 0.0, 0.0
+	).unwrap();
+
+	let layout = debug_draw_flux_pipeline.layout().descriptor_set_layout(0).unwrap().clone();
+    let debug_draw_flux_desc_set = Arc::new(PersistentDescriptorSet::start(layout)
+        .add_sampled_image(flux.clone(), flux_sampler.clone()).unwrap()
+        .build().unwrap()
+    );
+
+
+	//////////////////////
+	//////////////////////
+	//////////////////////
     let mut dynamic_state = DynamicState { 
         line_width: None, 
         viewports: None, 
@@ -466,7 +482,7 @@ fn main() {
 
     let mut recreate_swapchain = false; 
 
-    let mut previous_frame_end = Some(Box::new(sync::now(device.clone()).join(autumn_texture_future)) as Box<dyn GpuFuture>); 
+ 	let mut previous_frame_end = Some(Box::new(sync::now(device.clone()).join(autumn_texture_future)) as Box<dyn GpuFuture>); 
 
     let t0 = time::SystemTime::now(); 
     let mut now = t0; 
@@ -531,14 +547,14 @@ fn main() {
                         fish_desc_set.clone(), 
                         fish_push_constants)
                     .unwrap()
-                    //.draw(
-                    //    debug_draw_flux_pipeline.clone(), 
-                    //    &dynamic_state, 
-                    //    debug_draw_flux_vertex_buffer.clone(), 
-                    //    fish_desc_set.clone(), 
-                    //    ()
-                    //)
-                    //.unwrap()
+                    .draw(
+                        debug_draw_flux_pipeline.clone(), 
+                        &dynamic_state, 
+                        debug_draw_flux_vertex_buffer.clone(), 
+                        debug_draw_flux_desc_set.clone(), 
+                        ()
+                    )
+                    .unwrap()
                     .end_render_pass()
                     .unwrap()
                     .build()

@@ -10,7 +10,7 @@ use vulkano::{
     pipeline::{
         GraphicsPipeline, 
         viewport::Viewport, 
-        // ComputePipeline,
+        ComputePipeline,
 		vertex::{
 			SingleBufferDefinition
 		}
@@ -103,12 +103,6 @@ use winit::{
 };
 
 
-mod cs {
-    vulkano_shaders::shader! {
-        ty: "compute",
-        path: "./src/shader/particle_update.cp.glsl"
-    }
-}
 
 //#[derive(Copy, Clone, Debug)]
 //struct Particle {
@@ -134,7 +128,8 @@ struct VertexTwoDTex {
 vulkano::impl_vertex!(VertexTwoDTex, position, uv); 
 
 fn main() {
-     const FLUX_RES: u32 = 32; 
+    const FLUX_RES: u32 = 32; 
+	const PARTICLE_COUNT: u32 = 32; 
 
     let img = match image::open("./fish/skin-0001.png") {
         Ok(image) => image, 
@@ -272,22 +267,31 @@ fn main() {
     }
 
     #[allow(dead_code)] // Used to force recompilation of shader change
-    const S_FISH2: &str = include_str!("./shader/fish.geo.glsl");
+    const S_FISH2: &str = include_str!("./shader/fish.gs.glsl");
     mod fish_gs { 
         vulkano_shaders::shader!{
             ty: "geometry", 
-            path: "./src/shader/fish.geo.glsl"
+            path: "./src/shader/fish.gs.glsl"
         }
     }
 
     #[allow(dead_code)] // Used to force recompilation of shader change
-    const S_FLUX: &str = include_str!("./shader/gen_flux.cp.glsl");
+    const C_FLUX: &str = include_str!("./shader/flux.cp.glsl");
     mod flux_cp { 
         vulkano_shaders::shader!{
             ty: "compute", 
-            path: "./src/shader/gen_flux.cp.glsl"
+            path: "./src/shader/flux.cp.glsl"
         }
     }
+
+    #[allow(dead_code)] // Used to force recompilation of shader change
+    const C_PARTICLE: &str = include_str!("./shader/particle.cp.glsl");
+	mod particle_cp {
+		vulkano_shaders::shader! {
+			ty: "compute",
+			path: "./src/shader/particle.cp.glsl"
+		}
+	}
 
     #[allow(dead_code)] // Used to force recompilation of shader change
     const S_G_2D: &str = include_str!("./shader/general_2d.vs.glsl");
@@ -316,6 +320,28 @@ fn main() {
     let general_2d_vs = general_2d_vs::Shader::load(device.clone()).unwrap(); 
     let debug_draw_flux_fs = debug_draw_flux_fs::Shader::load(device.clone()).unwrap(); 
 
+
+    //////////////
+    // flux img //
+    //////////////
+	
+    let mut image_usage = ImageUsage::none();
+    image_usage.storage = true; 
+	image_usage.sampled = true;
+    let flux = match StorageImage::with_usage(
+        device.clone(),
+        Dimensions::Dim3d { 
+            width: FLUX_RES,    
+            height: FLUX_RES, 
+            depth: FLUX_RES 
+        },
+        Format::R8G8B8A8Unorm,
+		image_usage,
+        Some(queue.family())
+    ) {
+        Ok(i) => i,
+        Err(err) => panic!("{:?}", err)
+    };
 
 	/////////////// 
 	// pipelines // 
@@ -352,24 +378,25 @@ fn main() {
     );
 
 
-    // let compute_pipeline = Arc::new(
-    //     ComputePipeline::new(device.clone(), &flux_cp.main_entry_point(), &()).unwrap()
-    // );
+    let flux_compute_pipeline = Arc::new(
+        ComputePipeline::new(device.clone(), &flux_cp.main_entry_point(), &()).unwrap()
+    );
 
-    // let set2 = Arc::new(
-    //     PersistentDescriptorSet::start(compute_pipeline.layout().descriptor_set_layout(0).unwrap().clone())
-    //         .add_image(flux.clone())
-    //         .unwrap()
-    //         .build()
-    //         .unwrap(),
-    // );
+	let flux_compute_layout = flux_compute_pipeline.layout();
+	println!("{:?}", flux_compute_layout);
+	//let descriptor_set_layout = flux_compute_layout.descriptor_set_layout(0).unwrap().clone(); 
+    //let flux_compute_set = Arc::new(
+    //    PersistentDescriptorSet::start(descriptor_set_layout)
+    //        .add_image(flux.clone())
+    //        .unwrap()
+    //        .build()
+    //        .unwrap(),
+    //);
 
-    // let command_buffer = AutoCommandBufferBuilder::new(device.clone(), queue.family())
-    //     .unwrap()
-    //     .dispatch([PARTICLE_COUNT as u32 / 32, 1, 1], compute_pipeline.clone(), set.clone(), ())
-    //     .unwrap()
-    //     .build()
-    //     .unwrap();
+    //let command_buffer = AutoCommandBufferBuilder::new(device.clone(), queue.family())
+    //    .unwrap()
+    //    .build()
+    //    .unwrap();
 
 
     ///////////////
@@ -406,32 +433,12 @@ fn main() {
         Err(err) => panic!("{:?}", err)
     };
 
-    let fish_desc_set = Arc::new(PersistentDescriptorSet::start(fish_pipeline.layout().descriptor_set_layout(0).unwrap().clone())
+	let fish_pipeline_layout = fish_pipeline.layout();
+	println!("{:?}", fish_pipeline_layout); 
+    let fish_desc_set = Arc::new(PersistentDescriptorSet::start(fish_pipeline_layout.descriptor_set_layout(0).unwrap().clone())
         .add_sampled_image(autumn_texture.clone(), fish_skin_sampler.clone()).unwrap()
         .build().unwrap()
     );
-
-    ////////////////
-    //// flux gen //
-    ////////////////
-	
-    let mut image_usage = ImageUsage::none();
-    image_usage.storage = true; 
-	image_usage.sampled = true;
-    let flux = match StorageImage::with_usage(
-        device.clone(),
-        Dimensions::Dim3d { 
-            width: FLUX_RES,    
-            height: FLUX_RES, 
-            depth: FLUX_RES 
-        },
-        Format::R8G8B8A8Unorm,
-		image_usage,
-        Some(queue.family())
-    ) {
-        Ok(i) => i,
-        Err(err) => panic!("{:?}", err)
-    };
 
 
     /////////////////////
@@ -540,6 +547,13 @@ fn main() {
                     .unwrap()
                     .begin_render_pass(framebuffers[image_num].clone(), false, clear_values)
                     .unwrap()
+					//.dispatch(
+					//	[FLUX_RES, FLUX_RES, FLUX_RES], 
+					//	flux_compute_pipeline.clone(), 
+					//	flux_compute_set.clone(), 
+					//	()
+					//)
+					//.unwrap()
                     .draw(
                         fish_pipeline.clone(), 
                         &dynamic_state, 

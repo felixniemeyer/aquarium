@@ -19,7 +19,6 @@ use vulkano::{
     device::{
         Device,
         Features,
-        RawDeviceExtensions,
     },
 
     framebuffer::{
@@ -54,7 +53,11 @@ use vulkano::{
         DynamicState
     },
 
-    descriptor::descriptor_set::PersistentDescriptorSet,
+    descriptor::{
+        descriptor_set::PersistentDescriptorSet,
+        PipelineLayoutAbstract
+    },
+
     format::Format, 
 
     swapchain,
@@ -98,11 +101,12 @@ use winit::{
     },
     event::{
         Event, 
-        WindowEvent
+        WindowEvent,
+        KeyboardInput, 
+        VirtualKeyCode,
+        ElementState,
     }
 };
-
-
 
 //#[derive(Copy, Clone, Debug)]
 //struct Particle {
@@ -128,8 +132,8 @@ struct VertexTwoDTex {
 vulkano::impl_vertex!(VertexTwoDTex, position, uv); 
 
 fn main() {
-    const FLUX_RES: u32 = 32; 
-	const PARTICLE_COUNT: u32 = 32; 
+    const FLUX_RES: u32 = 16; 
+	// const PARTICLE_COUNT: u32 = 32; 
 
     let img = match image::open("./fish/skin-0001.png") {
         Ok(image) => image, 
@@ -152,27 +156,26 @@ fn main() {
 
     let queue_family = physical
         .queue_families()
-        .find(|&q| q.supports_graphics())
-        .expect("couldn't find a graphical queue family");
+        .find(|&q| q.supports_graphics() && q.supports_compute())
+        .expect("couldn't find a queue that supports compute and graphics");
 
     let (device, mut queues) = {
-        let unraw_dev_exts = vulkano::device::DeviceExtensions {
+        let device_extensions = vulkano::device::DeviceExtensions {
             khr_swapchain: true, 
+            khr_storage_buffer_storage_class: true, 
             .. vulkano::device::DeviceExtensions::none()
         };
-        let mut dev_exts = RawDeviceExtensions::from(&unraw_dev_exts);
-        dev_exts.insert(std::ffi::CString::new("VK_KHR_storage_buffer_storage_class").unwrap());
 
-
-        let dev_features = Features {
+        // disadvantage of specifying to much (all supported) features? physical.supported_features()
+        let device_features = Features {
             geometry_shader: true, 
             .. Features::none()
         };
 
         Device::new(
             physical,
-            &dev_features, 
-            dev_exts,
+            &device_features,
+            &device_extensions,
             [(queue_family, 0.5)].iter().cloned(),
         )
         .expect("failed to create device")
@@ -382,22 +385,15 @@ fn main() {
         ComputePipeline::new(device.clone(), &flux_cp.main_entry_point(), &()).unwrap()
     );
 
-	let flux_compute_layout = flux_compute_pipeline.layout();
-	println!("{:?}", flux_compute_layout);
-	//let descriptor_set_layout = flux_compute_layout.descriptor_set_layout(0).unwrap().clone(); 
-    //let flux_compute_set = Arc::new(
-    //    PersistentDescriptorSet::start(descriptor_set_layout)
-    //        .add_image(flux.clone())
-    //        .unwrap()
-    //        .build()
-    //        .unwrap(),
-    //);
 
-    //let command_buffer = AutoCommandBufferBuilder::new(device.clone(), queue.family())
-    //    .unwrap()
-    //    .build()
-    //    .unwrap();
-
+	let flux_compute_pipeline_layout = flux_compute_pipeline.layout().descriptor_set_layout(0).unwrap(); 
+    let flux_compute_descr_set = Arc::new(
+        PersistentDescriptorSet::start(flux_compute_pipeline_layout.clone())
+            .add_image(flux.clone())
+            .unwrap()
+            .build()
+            .unwrap(),
+    );
 
     ///////////////
     // fish draw //
@@ -433,9 +429,8 @@ fn main() {
         Err(err) => panic!("{:?}", err)
     };
 
-	let fish_pipeline_layout = fish_pipeline.layout();
-	println!("{:?}", fish_pipeline_layout); 
-    let fish_desc_set = Arc::new(PersistentDescriptorSet::start(fish_pipeline_layout.descriptor_set_layout(0).unwrap().clone())
+	let fish_pipeline_layout = fish_pipeline.layout().descriptor_set_layout(0).unwrap(); 
+    let fish_desc_set = Arc::new(PersistentDescriptorSet::start(fish_pipeline_layout.clone())
         .add_sampled_image(autumn_texture.clone(), fish_skin_sampler.clone()).unwrap()
         .build().unwrap()
     );
@@ -499,6 +494,15 @@ fn main() {
         match event {
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => *control_flow = ControlFlow::Exit,
             Event::WindowEvent { event: WindowEvent::Resized(_), .. } => recreate_swapchain = true,
+            Event::WindowEvent { 
+                event: WindowEvent::KeyboardInput {  
+                    input: KeyboardInput {
+                        virtual_keycode: Some(VirtualKeyCode::Q),
+                        state: ElementState::Pressed, ..
+                    }, ..
+                }, ..
+
+            } => *control_flow = ControlFlow::Exit, 
             Event::RedrawEventsCleared => {
                 previous_frame_end.as_mut().unwrap().cleanup_finished(); 
 
@@ -531,8 +535,13 @@ fn main() {
                 then = now; 
                 now = time::SystemTime::now();
 
-                let time = now.duration_since(t0).unwrap().as_millis() as i32;
-                let dtime = now.duration_since(then).unwrap().as_millis() as i32;
+                let time = (now.duration_since(t0).unwrap().as_millis() % (1000 * 60 * 60 * 24 * 365)) as f32 * 0.001;
+                let dtime = now.duration_since(then).unwrap().as_millis() as f32 * 0.001;
+
+                let flux_compute_push_constants = flux_cp::ty::PushConstantData {
+                    time, 
+                    dtime
+                };
 
                 let fish_push_constants = fish_gs::ty::PushConstantData {
                     time,
@@ -545,15 +554,15 @@ fn main() {
                     queue.family()
                 )
                     .unwrap()
-                    .begin_render_pass(framebuffers[image_num].clone(), false, clear_values)
+					.dispatch(
+						[FLUX_RES, FLUX_RES, FLUX_RES], 
+						flux_compute_pipeline.clone(), 
+						flux_compute_descr_set.clone(), 
+						flux_compute_push_constants
+					)
                     .unwrap()
-					//.dispatch(
-					//	[FLUX_RES, FLUX_RES, FLUX_RES], 
-					//	flux_compute_pipeline.clone(), 
-					//	flux_compute_set.clone(), 
-					//	()
-					//)
-					//.unwrap()
+                    .begin_render_pass(framebuffers[image_num].clone(), false, clear_values)
+					.unwrap()
                     .draw(
                         fish_pipeline.clone(), 
                         &dynamic_state, 

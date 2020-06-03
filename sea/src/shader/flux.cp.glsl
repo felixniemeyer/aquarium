@@ -1,5 +1,10 @@
 #version 450
 
+layout(push_constant) uniform PushConstantData {
+	float time; 
+	float dtime; 
+} pc;
+
 layout ( local_size_x = 1, local_size_y = 1, local_size_z = 1 ) in; 
 
 layout ( set = 0, binding = 0, rgba8 ) uniform writeonly image3D flux;
@@ -95,13 +100,11 @@ float snoise(vec4 v){
 
 }
 
-const float time = 1.0;
-
 void main() {
 	vec3 xzy_noise = vec3(
-		snoise(vec4(gl_GlobalInvocationID.xzy, time)),
-		snoise(vec4(gl_GlobalInvocationID.xzy + 100.0, time)),
-		snoise(vec4(gl_GlobalInvocationID.xzy + 200.0, time))
+		snoise(vec4(gl_GlobalInvocationID.xzy, pc.time)),
+		snoise(vec4(gl_GlobalInvocationID.xzy + 100.0, pc.time)),
+		snoise(vec4(gl_GlobalInvocationID.xzy + 200.0, pc.time))
 	);
 	imageStore(flux, ivec3(gl_GlobalInvocationID.xzy), vec4(xzy_noise, 1));
 }

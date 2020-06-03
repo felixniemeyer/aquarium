@@ -1,8 +1,8 @@
 #version 450
 
 layout(push_constant) uniform PushConstantData {
-	int time; 
-	int dtime; 
+	float time; 
+	float dtime; 
 } pc;
 
 layout(points) in; 

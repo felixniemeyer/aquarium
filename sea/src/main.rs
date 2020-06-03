@@ -338,7 +338,7 @@ fn main() {
             height: FLUX_RES, 
             depth: FLUX_RES 
         },
-        Format::R8G8B8A8Unorm,
+        Format::R8G8B8A8Snorm,
 		image_usage,
         Some(queue.family())
     ) {
@@ -434,7 +434,6 @@ fn main() {
         .add_sampled_image(autumn_texture.clone(), fish_skin_sampler.clone()).unwrap()
         .build().unwrap()
     );
-
 
     /////////////////////
     // debug draw flux //

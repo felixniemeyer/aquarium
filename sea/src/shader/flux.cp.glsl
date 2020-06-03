@@ -95,16 +95,21 @@ float snoise(vec4 v){
   vec2 m1 = max(0.6 - vec2(dot(x3,x3), dot(x4,x4)            ), 0.0);
   m0 = m0 * m0;
   m1 = m1 * m1;
-  return 49.0 * ( dot(m0*m0, vec3( dot( p0, x0 ), dot( p1, x1 ), dot( p2, x2 )))
+// map to [0,1]
+  return 0.5 + 0.5 * 49.0 * ( dot(m0*m0, vec3( dot( p0, x0 ), dot( p1, x1 ), dot( p2, x2 )))
                + dot(m1*m1, vec2( dot( p3, x3 ), dot( p4, x4 ) ) ) ) ;
 
 }
 
+const int FLUX_RES = 16;
+const float TIME_SCALE = 0.5;
+
 void main() {
+	float ts = pc.time * TIME_SCALE; 
 	vec3 xzy_noise = vec3(
-		snoise(vec4(gl_GlobalInvocationID.xzy, pc.time)),
-		snoise(vec4(gl_GlobalInvocationID.xzy + 100.0, pc.time)),
-		snoise(vec4(gl_GlobalInvocationID.xzy + 200.0, pc.time))
+		snoise(vec4(gl_GlobalInvocationID.xzy, ts)) 		- gl_GlobalInvocationID.x * 1.0 / (FLUX_RES - 1),
+		snoise(vec4(gl_GlobalInvocationID.xzy, ts + 10.33)) - gl_GlobalInvocationID.y * 1.0 / (FLUX_RES - 1),
+		snoise(vec4(gl_GlobalInvocationID.xzy, ts + 63.66)) - gl_GlobalInvocationID.z * 1.0 / (FLUX_RES - 1)
 	);
-	imageStore(flux, ivec3(gl_GlobalInvocationID.xzy), vec4(xzy_noise, 1));
+	imageStore(flux, ivec3(gl_GlobalInvocationID.xzy), vec4(xzy_noise, 1)); 
 }

@@ -132,7 +132,7 @@ struct VertexTwoDTex {
 vulkano::impl_vertex!(VertexTwoDTex, position, uv); 
 
 fn main() {
-    const FLUX_RES: u32 = 16; 
+    const FLUX_RES: u32 = 32; 
 	// const PARTICLE_COUNT: u32 = 32; 
 
     let img = match image::open("./fish/skin-0001.png") {

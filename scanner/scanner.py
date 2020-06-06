@@ -15,7 +15,10 @@ while not os.path.exists(img_path):
 
 img = Image.open(img_path)
 
+# todo: the mask and the cropping will depend on the used stencil 
 fish = Image.composite(img, background, mask)
+fish = fish.crop((1337, 768, 4096, 768 + (4096 - 1337)))
+fish = fish.resize((1024, 1024),Image.ANTIALIAS)
 
 fish.save("result.png", "PNG") 
 

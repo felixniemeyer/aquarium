@@ -21,4 +21,18 @@
 		- swarm factor 
 	- Ok saves it to the aquarium fish folder
 
-
+- Drop them into the sea
+	- particle data buffer
+		- device local
+	- compute particle update
+		- in
+			- flux
+			- particle data 
+				- speed
+				- position
+				- swarm_offset
+			- species data 
+		- out
+			- updated particle data
+			- vertex data 
+				

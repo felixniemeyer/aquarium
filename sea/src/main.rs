@@ -133,7 +133,7 @@ vulkano::impl_vertex!(VertexTwoDTex, position, uv);
 
 fn main() {
     const FLUX_RES: u32 = 16; 
-	// const PARTICLE_COUNT: u32 = 32; 
+	const PARTICLE_COUNT: u32 = 1024; 
 
     let img = match image::open("./fish/skin-0001.png") {
         Ok(image) => image, 
@@ -398,13 +398,13 @@ fn main() {
     ///////////////
     // fish draw //
     ///////////////
-    let mut data: [Vertex; 128] = unsafe { MaybeUninit::uninit().assume_init() }; // unsafe {  }; //unsafe :D
+    let mut data: [Vertex; PARTICLE_COUNT as usize] = unsafe { MaybeUninit::uninit().assume_init() }; // unsafe {  }; //unsafe :D
     let mut rng = thread_rng();
     for i in 0..data.len() {
         data[i].position = [
-            rng.gen_range(-1.0,1.0),
-            rng.gen_range(-1.0,1.0),
-            rng.gen_range(0.2,0.9),
+            rng.gen_range(-0.9,0.9),
+            rng.gen_range(-0.4,0.4),
+            rng.gen_range(-0.9,0.9),
         ]
     }
 

@@ -7,6 +7,8 @@
 			- yes: https://community.khronos.org/t/drawing-to-image-from-compute-shader-example/7116
 	- compute particle system
 		- for now: ein Fisch-Schwarm
+		- r/w buffer für particle data (erstmal nur: position) 
+		- w to vertexbuffer
 	- camera & perspective matrix
 	- particle ordering
 	- distance fog

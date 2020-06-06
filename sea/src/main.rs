@@ -133,7 +133,7 @@ vulkano::impl_vertex!(VertexTwoDTex, position, uv);
 
 fn main() {
     const FLUX_RES: u32 = 32; 
-	// const PARTICLE_COUNT: u32 = 32; 
+	const PARTICLE_COUNT: u32 = 1024; 
 
     let img = match image::open("./fish/skin-0001.png") {
         Ok(image) => image, 
@@ -319,6 +319,7 @@ fn main() {
     let fish_fs = fish_fs::Shader::load(device.clone()).unwrap(); 
 
     let flux_cp = flux_cp::Shader::load(device.clone()).unwrap(); 
+	let particle_cp = particle_cp::Shader::load(device.clone()).unwrap(); 
 
     let general_2d_vs = general_2d_vs::Shader::load(device.clone()).unwrap(); 
     let debug_draw_flux_fs = debug_draw_flux_fs::Shader::load(device.clone()).unwrap(); 
@@ -385,34 +386,30 @@ fn main() {
         ComputePipeline::new(device.clone(), &flux_cp.main_entry_point(), &()).unwrap()
     );
 
-
-	let flux_compute_pipeline_layout = flux_compute_pipeline.layout().descriptor_set_layout(0).unwrap(); 
-    let flux_compute_descr_set = Arc::new(
-        PersistentDescriptorSet::start(flux_compute_pipeline_layout.clone())
-            .add_image(flux.clone())
-            .unwrap()
-            .build()
-            .unwrap(),
-    );
+	let particle_compute_pipeline = Arc::new(
+		ComputePipeline::new(device.clone(), &particle_cp.main_entry_point(), &()).unwrap()
+	); 
 
     ///////////////
     // fish draw //
     ///////////////
-    let mut data: [Vertex; 128] = unsafe { MaybeUninit::uninit().assume_init() }; // unsafe {  }; //unsafe :D
+    let mut vertex_data: [Vertex; PARTICLE_COUNT as usize] = {
+		unsafe { MaybeUninit::uninit().assume_init() }
+	};
     let mut rng = thread_rng();
-    for i in 0..data.len() {
-        data[i].position = [
+    for i in 0..vertex_data.len() {
+        vertex_data[i].position = [
             rng.gen_range(-1.0,1.0),
             rng.gen_range(-1.0,1.0),
             rng.gen_range(0.2,0.9),
         ]
     }
-
+	// TODO: use DeviceLocalBuffer
     let fish_vertex_buffer = CpuAccessibleBuffer::from_iter(
         device.clone(), 
         BufferUsage::all(), 
         false, 
-        data.iter().cloned()
+        vertex_data.iter().cloned()
     ).unwrap();
 
     let img_dim = img.dimensions();
@@ -435,19 +432,37 @@ fn main() {
         .build().unwrap()
     );
 
-    /////////////////////
-    // debug draw flux //
-    /////////////////////
-    let debug_draw_flux_vertex_buffer = CpuAccessibleBuffer::from_iter(
-		device.clone(), 
+	//////////////
+	// flux gen //
+	//////////////
+	let flux_compute_pipeline_layout = flux_compute_pipeline.layout().descriptor_set_layout(0).unwrap(); 
+    let flux_compute_descr_set = Arc::new(
+        PersistentDescriptorSet::start(flux_compute_pipeline_layout.clone())
+            .add_image(flux.clone())
+            .unwrap()
+            .build()
+            .unwrap(),
+    );
+
+	/////////////////////
+	// particle update //
+	/////////////////////
+	#[derive(Default, Debug, Clone, Copy)]
+	struct Particle {
+		position: [f32; 3]
+	}
+	let mut particle_data: [Particle; PARTICLE_COUNT as usize] = {
+		unsafe { MaybeUninit::uninit().assume_init() }
+	};
+	// TODO: use DeviceLocalBuffer
+	for i in 0..particle_data.len() {
+		particle_data[i].position = vertex_data[i].position
+	}
+	let fish_particle_buffer = CpuAccessibleBuffer::from_iter(
+		device.clone(),
 		BufferUsage::all(), 
-		false, 
-		[
-			VertexTwoDTex { position: [-0.5, -0.5], uv: [0.0, 0.0] },
-			VertexTwoDTex { position: [-0.5,  0.5], uv: [0.0, 1.0] },
-			VertexTwoDTex { position: [ 0.5, -0.5], uv: [1.0, 0.0] },
-			VertexTwoDTex { position: [ 0.5,  0.5], uv: [1.0, 1.0] },
-		].iter().cloned()
+		false,
+		particle_data.iter().cloned()
 	).unwrap();
 
 	let flux_sampler = Sampler::new(
@@ -459,6 +474,36 @@ fn main() {
 		SamplerAddressMode::ClampToEdge,
 		0.0, 1.0, 0.0, 0.0
 	).unwrap();
+
+	let particle_compute_pipeline_layout = particle_compute_pipeline.layout().descriptor_set_layout(0).unwrap(); 
+	let particle_compute_descr_set = Arc::new(
+		PersistentDescriptorSet::start(particle_compute_pipeline_layout.clone())
+			.add_sampled_image(flux.clone(), flux_sampler.clone()).unwrap()
+    		.add_buffer(fish_particle_buffer.clone()).unwrap()
+    		.add_buffer(fish_vertex_buffer.clone()).unwrap()
+			.build().unwrap()
+	);
+
+    /////////////////////
+    // debug draw flux //
+    /////////////////////
+	
+    let debug_draw_flux_vertex_buffer = {
+		let x = -0.9;
+		let y = -0.9; 
+		let s = 0.3;
+		CpuAccessibleBuffer::from_iter(
+			device.clone(), 
+			BufferUsage::all(), 
+			false, 
+			[
+				VertexTwoDTex { position: [x, y], uv: [0.0, 0.0] },
+				VertexTwoDTex { position: [x, y+s], uv: [0.0, 1.0] },
+				VertexTwoDTex { position: [x+s, y], uv: [1.0, 0.0] },
+				VertexTwoDTex { position: [x+s, y+s], uv: [1.0, 1.0] },
+			].iter().cloned()
+		).unwrap()
+	};
 
 	let layout = debug_draw_flux_pipeline.layout().descriptor_set_layout(0).unwrap().clone();
     let debug_draw_flux_desc_set = Arc::new(PersistentDescriptorSet::start(layout)
@@ -552,6 +597,13 @@ fn main() {
                     device.clone(), 
                     queue.family()
                 )
+                    .unwrap()
+					.dispatch(
+						[PARTICLE_COUNT, 1, 1], 
+						particle_compute_pipeline.clone(), 
+						particle_compute_descr_set.clone(), 
+						flux_compute_push_constants
+					)
                     .unwrap()
 					.dispatch(
 						[FLUX_RES, FLUX_RES, FLUX_RES], 

@@ -31,7 +31,7 @@ layout(set = 0, binding = 2) buffer writeonly Vertices {
 
 const float acceleration = 0.1; 
 const float drift_factor = 0.01;
-const float noisyness = 0.01; // later based on species
+const float noisyness = 0.03; // later based on species
 
 void main() {
 	uint id = gl_GlobalInvocationID.x; 

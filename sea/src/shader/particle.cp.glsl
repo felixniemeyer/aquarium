@@ -54,12 +54,10 @@ void main() {
 	) * pc.dtime;
 	particles[id].position += (particles[id].velocity) * pc.dtime;
 	vertices[id].position.rgb = particles[id].position.rgb;
-	float speed = length(particles[id].velocity); 
-	if(speed > 0) {
-		vertices[id].tail = vec4(-particles[id].velocity, speed);
+
+	if(length(particles[id].velocity.xz) > 0) {
+		vec3 tail = -particles[id].velocity * vec3(1, 0.5, 1); 		
+		vertices[id].tail = vec4(tail, length(tail));
 	}
-
-	// write tail = normalize(-stream) to vertices
-
 }
 

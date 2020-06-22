@@ -78,6 +78,12 @@ use vulkano::{
     },
 };
 
+use cgmath::{
+	Matrix4, 
+	Point3, 
+	Vector3,
+};
+
 use std::sync::Arc;
 
 use rand::{
@@ -549,10 +555,23 @@ fn main() {
     let mut now = t0; 
     let mut then = t0;
 
+	let mut view: Matrix4<f32> = Matrix4::look_at(
+		Point3::new(0.0, 0.0, 0.0),
+		Point3::new(0.0, 0.0, 1.0),
+		Vector3::new(0.0, 1.0, 0.0)
+	); 
+
+	let mut perspective: Matrix4<f32> = cgmath::perspective(cgmath::Deg(45.0), 1.0, 0.01, 10.0);
+
+	let mut view_perspective = perspective * view; 
+
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => *control_flow = ControlFlow::Exit,
-            Event::WindowEvent { event: WindowEvent::Resized(_), .. } => recreate_swapchain = true,
+            Event::WindowEvent { event: WindowEvent::Resized(_), .. } => {
+				recreate_swapchain = true; 
+				
+			}
             Event::WindowEvent { 
                 event: WindowEvent::KeyboardInput {  
                     input: KeyboardInput {
@@ -610,7 +629,9 @@ fn main() {
 
                 let fish_push_constants = fish_gs::ty::PushConstantData {
                     time,
-                    dtime
+                    dtime,
+					padding: [0.0, 0.0], 
+					viewPerspective: view_perspective.into()
                 };
 
                 let clear_values = vec!([0.03, 0.13, 0.3, 1.0].into()); 

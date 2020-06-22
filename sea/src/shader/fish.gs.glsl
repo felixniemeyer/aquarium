@@ -3,7 +3,10 @@
 layout(push_constant) uniform PushConstantData {
 	float time; 
 	float dtime; 
+	float padding[2]; 
+	mat4 viewPerspective; 
 } pc;
+
 
 layout(points) in; 
 
@@ -18,8 +21,15 @@ layout(location = 1) in vec3 down[];
 layout(location = 2) in vec3 side[]; 
 
 void transform_and_emit(in vec3 v) {
-	v = gl_in[0].gl_Position.xyz + v * fish_size + vec3(0,0,0.5); 
-	gl_Position = vec4(v, v.z); 
+
+	gl_Position = pc.viewPerspective *
+		(gl_in[0].gl_Position + vec4(v * fish_size, 1)); 
+
+	if(gl_Position.x == 0.0) {
+		v = gl_in[0].gl_Position.xyz + v * fish_size + vec3(0,0,0.5); 
+		gl_Position = vec4(v, v.z); 
+	}
+
 	EmitVertex();
 }
 
@@ -31,11 +41,9 @@ void emitTwo(in float p, in float x, in float z) {
 	
 	uv = vec2(1 - p, 1);
 	transform_and_emit(offset + 0.9 * down[0]); 
-
 }
 
 void main() {
-	
 	int fragments = 16 - 1; // todo: determine based on distance to eye. MAX = max_vertices / 2 - 1
 
 	vec3 offset; 

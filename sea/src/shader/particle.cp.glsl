@@ -30,7 +30,7 @@ layout(set = 0, binding = 2) buffer writeonly Vertices {
 }; 
 
 const float acceleration = 0.1; 
-const float drift_factor = 0.2;
+const float drift_factor = 0.15; // a bigger drift factor leads to more individual fish paths
 const float noisyness = 0.3; // later based on species
 
 void main() {

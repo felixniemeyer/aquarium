@@ -11,9 +11,6 @@ const vec3 up = vec3(0, -1, 0);
 
 void main() { 
 	gl_Position = position;  
-//	rear = vec3(1,0,0);
-//	down = vec3(0,1,0);
-//	side = vec3(0,0,1);
 	rear = tail.xyz / tail.w; 
 	side = normalize(cross(
 		rear,

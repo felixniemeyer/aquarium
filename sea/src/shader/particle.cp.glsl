@@ -10,7 +10,7 @@ layout(push_constant) uniform PushConstantData {
 
 struct Particle {
 	vec3 position; 
-	vec3 velocity;
+	vec3 offset;
 	vec3 drift; 
 };
 
@@ -30,15 +30,15 @@ layout(set = 0, binding = 2) buffer writeonly Vertices {
 }; 
 
 const float acceleration = 0.1; 
-const float drift_factor = 0.01;
-const float noisyness = 0.03; // later based on species
+const float drift_factor = 0.2;
+const float noisyness = 0.1; // later based on species
 
 void main() {
 	uint id = gl_GlobalInvocationID.x; 
 	vec3 stream = texture(flux, particles[id].position * 0.5 + 0.5).rgb;
 	stream.g *= 0.25; //fish don't move so much along this axis
 
-	particles[id].velocity *= pc.friction_95;
+	/* particles[id].velocity *= pc.friction_95;
 	float o_distance = length(particles[id].position);
 	float attraction; 
 	if(o_distance < 0.1) { //this threshold increases temporarily, when vr head is rotated
@@ -52,12 +52,19 @@ void main() {
 	  - particles[id].position / o_distance * attraction 
 	  
 	) * pc.dtime;
-	particles[id].position += (particles[id].velocity) * pc.dtime;
-	vertices[id].position.rgb = particles[id].position.rgb;
+	particles[id].position += (particles[id].velocity) * pc.dtime; */
 
-	if(length(particles[id].velocity.xz) > 0) {
-		vec3 tail = -particles[id].velocity * vec3(1, 0.5, 1); 		
-		vertices[id].tail = vec4(tail, length(tail));
+	vec3 v = stream
+		+ particles[id].drift * drift_factor
+		- particles[id].position * noisyness;
+
+	particles[id].position += v * pc.dtime; 
+	vertices[id].position.rgb = particles[id].position.rgb + particles[id].offset * 0.1; 
+	vertices[id].position.a = 1.0;
+
+	float l = length(stream);
+	if(l > 0) {
+		vertices[id].tail = vec4(-stream, l);
 	}
 }
 

@@ -88,7 +88,7 @@ use std::sync::Arc;
 
 use rand::{
     thread_rng, 
-    Rng
+	Rng
 };
 
 use image::{
@@ -138,9 +138,12 @@ struct VertexTwoDTex {
 }
 vulkano::impl_vertex!(VertexTwoDTex, position, uv); 
 
+
 fn main() {
     const FLUX_RES: u32 = 32; 
 	const PARTICLE_COUNT: u32 = 512; //TODO: for some reason only half of it gets updated by particle_cp 
+
+	let mut rng = thread_rng();
 
     let img = match image::open("./fish/skin-0001.png") {
         Ok(image) => image, 
@@ -346,7 +349,7 @@ fn main() {
             height: FLUX_RES, 
             depth: FLUX_RES 
         },
-        Format::R8G8B8A8Snorm,
+        Format::R16G16B16A16Snorm,
 		image_usage,
         Some(queue.family())
     ) {
@@ -400,19 +403,12 @@ fn main() {
     ///////////////
     // fish draw //
     ///////////////
-    let mut vertex_data: [Vertex; PARTICLE_COUNT as usize] = {
-		unsafe { MaybeUninit::uninit().assume_init() }
-	};
-    let mut rng = thread_rng();
-    for i in 0..vertex_data.len() {
-        vertex_data[i].position = [
-            rng.gen_range(-1.0,1.0),
-            rng.gen_range(-1.0,1.0),
-            rng.gen_range(-1.0,1.0),
-            1.0,
-        ];
-        vertex_data[i].tail = [ 1.0, 0.0, 0.0, 1.0 ];
-    }
+    let mut vertex_data: [Vertex; PARTICLE_COUNT as usize] = [
+		Vertex { 
+			position: [0., 0., 0., 1.0],
+			tail: [1.0, 0., 0., 1.0]
+		}; PARTICLE_COUNT as usize
+	];
 	// TODO: use DeviceLocalBuffer
     let fish_vertex_buffer = CpuAccessibleBuffer::from_iter(
         device.clone(), 
@@ -459,7 +455,7 @@ fn main() {
 	#[derive(Default, Debug, Clone, Copy)]
 	struct Particle {
 		position: [f32; 3],
-        velocity: [f32; 3],
+        offset: [f32; 3],
         drift: [f32;3],
 	}
 	let mut particle_data: [Particle; PARTICLE_COUNT as usize] = {
@@ -467,17 +463,9 @@ fn main() {
 	};
 	// TODO: use DeviceLocalBuffer
 	for i in 0..particle_data.len() {
-		particle_data[i].position = [
-            vertex_data[i].position[0],
-            vertex_data[i].position[1],
-            vertex_data[i].position[2],
-        ];
-        particle_data[i].velocity = [0.0, 0.0, 0.0];
-        particle_data[i].drift = [
-            -vertex_data[i].position[0],
-            -vertex_data[i].position[1],
-            -vertex_data[i].position[2],
-        ];
+		particle_data[i].position 	= random_point_in_sphere(&mut rng); 
+		particle_data[i].offset 	= random_point_in_sphere(&mut rng); 
+        particle_data[i].drift 		= random_point_in_sphere(&mut rng);
 	}
 	let fish_particle_buffer = CpuAccessibleBuffer::from_iter(
 		device.clone(),
@@ -718,6 +706,19 @@ fn main() {
 //     }
 //     return particles;
 // }
+
+fn random_point_in_sphere<T: Rng>(rng: &mut T) -> [f32; 3] {
+	let mut gen = || [
+		rng.gen_range(-1.0,1.0),
+		rng.gen_range(-1.0,1.0),
+		rng.gen_range(-1.0,1.0),
+	];
+	let mut r:[f32;3] = gen();
+	while (r[0].powf(2.0) + r[1].powf(2.0)).powf(2.0) + r[2].powf(2.0) > 1.0 {
+		r = gen();
+	}
+	return r
+}
 
 fn window_size_dependent_setup(
     images: &[Arc<SwapchainImage<Window>>], 

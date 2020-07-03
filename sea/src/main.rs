@@ -141,7 +141,7 @@ vulkano::impl_vertex!(VertexTwoDTex, position, uv);
 
 fn main() {
     const FLUX_RES: u32 = 32; 
-	const PARTICLE_COUNT: usize = 512; //TODO: for some reason only half of it gets updated by particle_cp 
+	const PARTICLE_COUNT: usize = 1024; 
 
 	let mut rng = thread_rng();
 
@@ -440,7 +440,7 @@ fn main() {
 	// TODO: use DeviceLocalBuffer
 	for i in 0..particle_data.len() {
 		particle_data[i].position 	= random_point_in_sphere(&mut rng); 
-        particle_data[i].size = rng.gen_range(0.05, 0.12); 
+        particle_data[i].size = rng.gen_range(0.03, 0.07); 
 		particle_data[i].offset 	= random_point_in_sphere(&mut rng); 
         particle_data[i].drift 		= random_point_in_sphere(&mut rng);
 	}

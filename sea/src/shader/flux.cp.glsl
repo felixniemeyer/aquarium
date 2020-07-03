@@ -111,7 +111,7 @@ const float IL = 1.0 / LEVELS;
 void main() {
 	float ts = pc.time * TIME_SCALE; 
 	vec3 xyz_noise = vec3(0,0,0);
-	float scale = 0.33333;
+	float scale = 1.0 / 3.0 / 2.0;
 	for(int level = 0; level < LEVELS; level ++) {
 		xyz_noise += IL * vec3(
 			snoise(vec4(gl_GlobalInvocationID.xzy * scale, ts + 10.12 * level)),

@@ -23,12 +23,11 @@ layout(location = 2) in vec3 side[];
 void transform_and_emit(in vec3 v) {
 	vec4 position = gl_in[0].gl_Position;
 
-
 	gl_Position = pc.viewPerspective *
 		(vec4(position.xzy + v * position.a, 1)); 
 
 	if(gl_Position.x == 0.0) {
-		vec3 v = position.xzy + v * position.a;
+		vec3 v = position.xzy + v * position.a + vec3(0,0,2);
 		gl_Position = vec4(v, v.z); 
 	}
 
@@ -48,7 +47,6 @@ void emitTwo(in float p, in float x, in float z) {
 void main() {
 	int fragments = 16 - 1; // todo: determine based on distance to eye. MAX = max_vertices / 2 - 1
 
-	vec3 offset; 
 	float p;
 	float x = -0.5; 
 	float z, prev_z = 0.0; 

@@ -31,25 +31,25 @@ layout(set = 0, binding = 2) buffer writeonly Vertices {
 
 const float acceleration = 0.1; 
 const float drift_factor = 0.2;
-const float noisyness = 0.1; // later based on species
+const float noisyness = 0.3; // later based on species
 
 void main() {
 	uint id = gl_GlobalInvocationID.x; 
 
-	vec3 stream = texture(flux, particles[id].position.xyz * 0.5 + 0.5).rgb + vec3(0,0,0.1);
-	stream.g *= 0.25; //fish don't move so much along this axis
+	vec3 stream = texture(flux, particles[id].position.xyz * 0.5 + 0.5).rgb;
+	stream.g *= 0.5; //fish don't move so much along this axis
 
 	vec3 v = stream
 		+ particles[id].drift.xyz * drift_factor
 		- particles[id].position.xyz * noisyness;
 
 	particles[id].position.xyz += v * pc.dtime; 
-	vertices[id].position.xyz = particles[id].position.xyz + particles[id].offset.xyz * 0.1 + vec3(0,0,0.1); 
+	vertices[id].position.xyz = particles[id].position.xyz + particles[id].offset.xyz * 0.1; 
 	vertices[id].position.a = particles[id].position.a;
 
-	float l = length(stream);
+	float l = length(v);
 	if(l > 0) {
-		vertices[id].tail = vec4(-stream, l);
+		vertices[id].tail = vec4(-v, l);
 	}
 }
 

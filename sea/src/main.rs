@@ -141,7 +141,7 @@ vulkano::impl_vertex!(VertexTwoDTex, position, uv);
 
 fn main() {
     const FLUX_RES: u32 = 32; 
-	const PARTICLE_COUNT: u32 = 512; //TODO: for some reason only half of it gets updated by particle_cp 
+	const PARTICLE_COUNT: usize = 512; //TODO: for some reason only half of it gets updated by particle_cp 
 
 	let mut rng = thread_rng();
 
@@ -192,33 +192,6 @@ fn main() {
     };
 
     let queue = queues.next().unwrap();
-
-    // let particles = init_particles_buffer();
-    // let particles_buffer =
-    //     CpuAccessibleBuffer::from_data(device.clone(), BufferUsage::all(), particles)
-    //         .expect("failed to create buffer");
-
-
-    // let shader = cs::Shader::load(device.clone()).expect("failed to create shader module");
-    // let compute_pipeline = Arc::new(
-    //     ComputePipeline::new(device.clone(), &shader.main_entry_point(), &())
-    //         .expect("failed to create compute pipeline"),
-    // );
-
-    // let set = Arc::new(
-    //     PersistentDescriptorSet::start(compute_pipeline.clone(), 0)
-    //         .add_buffer(particles_buffer.clone())
-    //         .unwrap()
-    //         .build()
-    //         .unwrap(),
-    // );
-
-    // let command_buffer = AutoCommandBufferBuilder::new(device.clone(), queue.family())
-    //     .unwrap()
-    //     .dispatch([PARTICLE_COUNT as u32 / 32, 1, 1], compute_pipeline.clone(), set.clone(), ())
-    //     .unwrap()
-    //     .build()
-    //     .unwrap();
 
     let event_loop = EventLoop::new(); 
     let surface = WindowBuilder::new().build_vk_surface(&event_loop, instance.clone()).unwrap();
@@ -403,11 +376,11 @@ fn main() {
     ///////////////
     // fish draw //
     ///////////////
-    let mut vertex_data: [Vertex; PARTICLE_COUNT as usize] = [
+    let vertex_data: [Vertex; PARTICLE_COUNT] = [
 		Vertex { 
 			position: [0., 0., 0., 1.0],
 			tail: [1.0, 0., 0., 1.0]
-		}; PARTICLE_COUNT as usize
+		}; PARTICLE_COUNT 
 	];
 	// TODO: use DeviceLocalBuffer
     let fish_vertex_buffer = CpuAccessibleBuffer::from_iter(
@@ -455,15 +428,19 @@ fn main() {
 	#[derive(Default, Debug, Clone, Copy)]
 	struct Particle {
 		position: [f32; 3],
+        size: f32,
         offset: [f32; 3],
+        padding_0: f32,
         drift: [f32;3],
+        padding_1: f32,
 	}
-	let mut particle_data: [Particle; PARTICLE_COUNT as usize] = {
+	let mut particle_data: [Particle; PARTICLE_COUNT] = {
 		unsafe { MaybeUninit::uninit().assume_init() }
 	};
 	// TODO: use DeviceLocalBuffer
 	for i in 0..particle_data.len() {
 		particle_data[i].position 	= random_point_in_sphere(&mut rng); 
+        particle_data[i].size = rng.gen_range(0.05, 0.12); 
 		particle_data[i].offset 	= random_point_in_sphere(&mut rng); 
         particle_data[i].drift 		= random_point_in_sphere(&mut rng);
 	}
@@ -629,7 +606,7 @@ fn main() {
                 )
                     .unwrap()
 					.dispatch(
-						[PARTICLE_COUNT, 1, 1], 
+						[PARTICLE_COUNT as u32, 1, 1], 
 						particle_compute_pipeline.clone(), 
 						particle_compute_descr_set.clone(), 
 						particle_compute_push_constants
@@ -689,23 +666,6 @@ fn main() {
         }
     });
 }
-
-// fn init_particles_buffer() -> [Particle; PARTICLE_COUNT] {
-//     let mut rng = thread_rng();
-//     let mut particles = [Particle {
-//         pos: [0.0, 0.0],
-//         tail: [0.0, 0.0],
-//         speed: [0.0, 0.0],
-//         prev_pos: [0.0, 0.0],
-//         prev_tail: [0.0, 0.0],
-//     }; PARTICLE_COUNT];
-//     for i in 0..particles.len() {
-//         particles[i].pos = [rng.gen_range(-1.0, 1.0), rng.gen_range(-1.0, 1.0)];
-//         particles[i].tail = particles[i].pos.clone();
-//         particles[i].speed = [rng.gen_range(-0.1, 0.1), rng.gen_range(-0.1, 0.1)];
-//     }
-//     return particles;
-// }
 
 fn random_point_in_sphere<T: Rng>(rng: &mut T) -> [f32; 3] {
 	let mut gen = || [

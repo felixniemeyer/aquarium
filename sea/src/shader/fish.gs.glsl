@@ -21,12 +21,14 @@ layout(location = 1) in vec3 down[];
 layout(location = 2) in vec3 side[]; 
 
 void transform_and_emit(in vec3 v) {
+	vec4 position = gl_in[0].gl_Position;
+
 
 	gl_Position = pc.viewPerspective *
-		(gl_in[0].gl_Position + vec4(v * fish_size, 1)); 
+		(vec4(position.xzy + v * position.a, 1)); 
 
 	if(gl_Position.x == 0.0) {
-		v = gl_in[0].gl_Position.xyz + v * fish_size + vec3(cos(pc.time) * 2,0,sin(pc.time)*2 + 2); 
+		vec3 v = position.xzy + v * position.a;
 		gl_Position = vec4(v, v.z); 
 	}
 

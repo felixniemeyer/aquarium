@@ -105,14 +105,21 @@ float snoise(vec4 v){
 
 const int FLUX_RES = 16;
 const float TIME_SCALE = 0.1;
+const int LEVELS = 4; 
+const float IL = 1.0 / LEVELS;
 
 void main() {
 	float ts = pc.time * TIME_SCALE; 
-	vec3 xyz_noise = vec3(
-		snoise(vec4(gl_GlobalInvocationID.xzy * 0.2, ts)) 			,//- gl_GlobalInvocationID.x * 1.0 / (FLUX_RES - 1),
-		snoise(vec4(gl_GlobalInvocationID.xzy * 0.2 + 0.66, ts + 10.33)) 	,//- gl_GlobalInvocationID.y * 1.0 / (FLUX_RES - 1),
-		snoise(vec4(gl_GlobalInvocationID.xzy * 0.2 + 0.33, ts + 63.66)) 	//- gl_GlobalInvocationID.z * 1.0 / (FLUX_RES - 1)
-	);
+	vec3 xyz_noise = vec3(0,0,0);
+	float scale = 0.33333;
+	for(int level = 0; level < LEVELS; level ++) {
+		xyz_noise += IL * vec3(
+			snoise(vec4(gl_GlobalInvocationID.xzy * scale, ts + 10.12 * level)),
+			snoise(vec4(gl_GlobalInvocationID.xzy * scale, ts + 1.633 * level)),
+			snoise(vec4(gl_GlobalInvocationID.xzy * scale, ts + 3.466 * level))
+		);
+		scale /= 2.0;
+	}
 	// vec3 xyz_noise = vec3( 1.0,0,0);
 	imageStore(flux, ivec3(gl_GlobalInvocationID.xzy), vec4(xyz_noise, 1)); 
 }

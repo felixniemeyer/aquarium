@@ -79,6 +79,7 @@ use vulkano::{
 };
 
 use cgmath::{
+    prelude::*,
 	Matrix4, 
 	Point3, 
 	Vector3,
@@ -297,6 +298,15 @@ fn main() {
         }
     }
 
+    #[allow(dead_code)] // Used to force recompilation of shader change
+    const S_SKY_FS: &str = include_str!("./shader/sky.fs.glsl");
+    mod sky_fs { 
+        vulkano_shaders::shader!{
+            ty: "fragment", 
+            path: "./src/shader/sky.fs.glsl"
+        }
+    }
+
     let fish_vs = fish_vs::Shader::load(device.clone()).unwrap(); 
     let fish_gs = fish_gs::Shader::load(device.clone()).unwrap(); 
     let fish_fs = fish_fs::Shader::load(device.clone()).unwrap(); 
@@ -306,6 +316,7 @@ fn main() {
 
     let general_2d_vs = general_2d_vs::Shader::load(device.clone()).unwrap(); 
     let debug_draw_flux_fs = debug_draw_flux_fs::Shader::load(device.clone()).unwrap(); 
+    let sky_fs = sky_fs::Shader::load(device.clone()).unwrap();
 
 
     //////////////
@@ -330,6 +341,7 @@ fn main() {
         Err(err) => panic!("{:?}", err)
     };
 
+
 	/////////////// 
 	// pipelines // 
 	///////////////
@@ -351,6 +363,16 @@ fn main() {
         MipmapMode::Nearest, SamplerAddressMode::Repeat, SamplerAddressMode::Repeat, 
         SamplerAddressMode::Repeat, 0.0, 1.0, 0.0, 0.0).unwrap(); 
 
+    let sky_pipeline = Arc::new(GraphicsPipeline::start()
+        .vertex_input(SingleBufferDefinition::<VertexTwoDTex>::new())
+        .vertex_shader(general_2d_vs.main_entry_point(), ())
+        .triangle_strip()
+        .viewports_dynamic_scissors_irrelevant(1)
+        .fragment_shader(sky_fs.main_entry_point(), ())
+        .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
+        .build(device.clone())
+        .unwrap()
+    );
 
     let debug_draw_flux_pipeline = Arc::new(GraphicsPipeline::start()
         .vertex_input(SingleBufferDefinition::<VertexTwoDTex>::new())
@@ -470,6 +492,28 @@ fn main() {
 			.build().unwrap()
 	);
 
+    /////////
+    // sky //
+    /////////
+	
+    let sky_vb = {
+		let x = -1.0;
+		let y = -1.0; 
+		let s = 2.0;
+		CpuAccessibleBuffer::from_iter(
+			device.clone(), 
+			BufferUsage::all(), 
+			false, 
+			[
+				VertexTwoDTex { position: [x, y], uv: [0.0, 0.0] },
+				VertexTwoDTex { position: [x, y+s], uv: [0.0, 1.0] },
+				VertexTwoDTex { position: [x+s, y], uv: [1.0, 0.0] },
+				VertexTwoDTex { position: [x+s, y+s], uv: [1.0, 1.0] },
+			].iter().cloned()
+		).unwrap()
+	};
+
+
     /////////////////////
     // debug draw flux //
     /////////////////////
@@ -520,15 +564,10 @@ fn main() {
     let mut now = t0; 
     let mut then = t0;
 
-	let mut view: Matrix4<f32> = Matrix4::look_at(
-		Point3::new(0.0, 0.0, 0.0),
-		Point3::new(0.0, 0.0, 1.0),
-		Vector3::new(0.0, 1.0, 0.0)
-	); 
+	let mut view: Matrix4<f32> = Matrix4::<f32>::from([[0.0;4];4]);
+	let perspective: Matrix4<f32> = cgmath::perspective(cgmath::Deg(45.0), 1.0, 0.01, 10.0);
+	let mut view_perspective: Matrix4<f32> = Matrix4::<f32>::from([[0.0;4];4]); 
 
-	let mut perspective: Matrix4<f32> = cgmath::perspective(cgmath::Deg(45.0), 1.0, 0.01, 10.0);
-
-	let mut view_perspective = perspective * view; 
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -581,6 +620,15 @@ fn main() {
                 let time = (now.duration_since(t0).unwrap().as_millis() % (1000 * 60 * 60 * 24 * 365)) as f32 * 0.001;
                 let dtime = now.duration_since(then).unwrap().as_millis() as f32 * 0.001;
 
+                let angle = cgmath::Deg(time * 30.0);
+
+                view = Matrix4::look_at(
+                    Point3::new(angle.sin() * 2.0, cgmath::Deg(time * 10.0).sin() * 1.0, angle.cos() * 2.0),
+                    Point3::new(0.0, 0.0, 0.0),
+                    Vector3::new(0.0, 1.0, 0.0)
+                ); 
+                view_perspective = perspective * view; 
+
                 let flux_compute_push_constants = flux_cp::ty::PushConstantData {
                     time, 
                     dtime
@@ -595,8 +643,8 @@ fn main() {
                 let fish_push_constants = fish_gs::ty::PushConstantData {
                     time,
                     dtime,
-					padding: [0.0, 0.0], 
-					viewPerspective: view_perspective.into()
+					padding: [0.0; 2], 
+					viewPerspective: view_perspective.into(),
                 };
 
                 let clear_values = vec!([0.03, 0.13, 0.3, 1.0].into()); 
@@ -622,20 +670,26 @@ fn main() {
                     .begin_render_pass(framebuffers[image_num].clone(), false, clear_values)
 					.unwrap()
                     .draw(
+                        sky_pipeline.clone(),
+                        &dynamic_state, 
+                        sky_vb.clone(),
+                        (), 
+                        ()
+                    ).unwrap()
+                    .draw(
                         fish_pipeline.clone(), 
                         &dynamic_state, 
                         fish_vertex_buffer.clone(), 
                         fish_desc_set.clone(), 
-                        fish_push_constants)
-                    .unwrap()
+                        fish_push_constants
+                    ).unwrap()
                     .draw(
                         debug_draw_flux_pipeline.clone(), 
                         &dynamic_state, 
                         debug_draw_flux_vertex_buffer.clone(), 
                         debug_draw_flux_desc_set.clone(), 
                         ()
-                    )
-                    .unwrap()
+                    ).unwrap()
                     .end_render_pass()
                     .unwrap()
                     .build()

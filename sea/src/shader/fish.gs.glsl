@@ -7,7 +7,6 @@ layout(push_constant) uniform PushConstantData {
 	mat4 viewPerspective; 
 } pc;
 
-
 layout(points) in; 
 
 layout(triangle_strip, max_vertices = 32) out; 
@@ -23,13 +22,9 @@ layout(location = 2) in vec3 side[];
 void transform_and_emit(in vec3 v) {
 	vec4 position = gl_in[0].gl_Position;
 
-	gl_Position = pc.viewPerspective *
-		(vec4(position.xyz + v * position.a, 1)); 
-
-	if(gl_Position.x == 0.0) {
-		vec3 v = position.xyz + v * position.a + vec3(0,0,2);
-		gl_Position = vec4(v, v.z); 
-	}
+	vec3 outp = position.xyz + v * position.a; 
+	outp.z = -outp.z;
+	gl_Position = pc.viewPerspective * vec4(outp, 1);
 
 	EmitVertex();
 }

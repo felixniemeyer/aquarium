@@ -565,7 +565,9 @@ fn main() {
     let mut then = t0;
 
 	let mut view: Matrix4<f32> = Matrix4::<f32>::from([[0.0;4];4]);
-	let perspective: Matrix4<f32> = cgmath::perspective(cgmath::Deg(45.0), 1.0, 0.01, 10.0);
+    let s = 0.007776; 
+	let perspective: Matrix4<f32> = cgmath::frustum(-s, s, -s, s, 0.01, 10.0);
+
 	let mut view_perspective: Matrix4<f32> = Matrix4::<f32>::from([[0.0;4];4]); 
 
 
@@ -620,13 +622,22 @@ fn main() {
                 let time = (now.duration_since(t0).unwrap().as_millis() % (1000 * 60 * 60 * 24 * 365)) as f32 * 0.001;
                 let dtime = now.duration_since(then).unwrap().as_millis() as f32 * 0.001;
 
-                let angle = cgmath::Deg(time * 30.0);
+                let angle = cgmath::Deg(time * 5.0);
+                let updown = cgmath::Deg(time * 10.0).sin();
+                let camera = Point3::new(
+                    angle.sin() * 1.0, 
+                    updown * 2.0, 
+                    angle.cos() * 1.0
+                );
+                let center = Point3::new(0.0, 0.0, 0.0);
+                let up = Vector3::new(0.0, 1.0, 0.0);
 
-                view = Matrix4::look_at(
-                    Point3::new(angle.sin() * 2.0, cgmath::Deg(time * 10.0).sin() * 1.0, angle.cos() * 2.0),
-                    Point3::new(0.0, 0.0, 0.0),
-                    Vector3::new(0.0, 1.0, 0.0)
-                ); 
+                view = Matrix4::look_at(camera, center, up);
+
+                let straight = (center - camera).normalize(); 
+                let right = straight.cross(up).normalize(); 
+                let bottom = straight.cross(right).normalize(); 
+
                 view_perspective = perspective * view; 
 
                 let flux_compute_push_constants = flux_cp::ty::PushConstantData {
@@ -641,10 +652,18 @@ fn main() {
                 };
 
                 let fish_push_constants = fish_gs::ty::PushConstantData {
+					viewPerspective: view_perspective.into(),
+                    cameraPos: camera.into(),
                     time,
                     dtime,
-					padding: [0.0; 2], 
-					viewPerspective: view_perspective.into(),
+                };
+
+                let sky_push_constants = sky_fs::ty::PCData {
+                    straight: straight.into(), 
+                    right: right.into(), 
+                    bottom: bottom.into(),
+                    dummy: 0.0, 
+                    dummy2: 0.0,
                 };
 
                 let clear_values = vec!([0.03, 0.13, 0.3, 1.0].into()); 
@@ -674,7 +693,7 @@ fn main() {
                         &dynamic_state, 
                         sky_vb.clone(),
                         (), 
-                        ()
+                        sky_push_constants,
                     ).unwrap()
                     .draw(
                         fish_pipeline.clone(), 

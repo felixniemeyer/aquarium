@@ -16,7 +16,23 @@ layout(location = 2) out vec3 side;
 layout(location = 3) out vec4 lighting; 
 
 const vec3 UP = vec3(0, -1, 0);
-const float FOG_AMOUNT = 1.0;
+const float FOG_AMOUNT = 0.3;
+
+struct Light {
+	vec3 color; 
+	vec3 normal;
+	float e; 
+};
+const Light sun = Light(
+	vec3(0.9, 0.3, 0.0), 
+	vec3(0, -1, 0),
+	2.0
+);
+const Light sea = Light(
+	vec3(0.0, 0.3, 0.5) * 0.4,
+	vec3(0, -1, 0),
+	1.0
+);
 
 void main() { 
 	gl_Position = position;  
@@ -25,8 +41,9 @@ void main() {
 	float cam_distance = length(view_direction); 
 	view_direction /= cam_distance; // normalize
 	
-	lighting.rgb = vec3(0.3,0.4,0.5)
-		 + vec3(0.3,0.2,0.1) * pow(dot(vec3(0, 1, 0), view_direction) * 0.5 + 0.5, 2);
+	lighting.rgb = vec3(0.3,0.3,0.3) 
+		 + sun.color * pow(dot(-sun.normal, view_direction) * 0.5 + 0.5, sun.e);
+		 + sea.color * pow(dot(-sea.normal, view_direction) * 0.5 + 0.5, sea.e);
 
 	lighting.a = 1.0 / (1.0 + FOG_AMOUNT * cam_distance);
 

@@ -47,6 +47,7 @@ void main() {
 	vertices[id].position.xyz = particles[id].position.xyz + particles[id].offset.xyz * 0.1; 
 	vertices[id].position.a = particles[id].position.a;
 
+	v.y *= 0.5;
 	float l = length(v);
 	if(l > 0) {
 		vertices[id].tail = vec4(-v, l);

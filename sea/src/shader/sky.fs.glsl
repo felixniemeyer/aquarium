@@ -16,6 +16,14 @@ struct Light {
 	vec3 color; 
 	vec3 normal;
 };
+Light sun = Light(
+	vec3(0.9, 0.3, 0.0), 
+	vec3(0, -1, 0)
+);
+Light sea = Light(
+	vec3(0.0, 0.3, 0.5) * 0.4,
+	vec3(0, -1, 0)
+);
 
 const float FRUSTUM_HALF = 0.1; 
 const float FRUSTUM_NCP = 0.01;
@@ -28,14 +36,6 @@ void main() {
 	);
 
 	vec3 base_color = vec3(0.1, 0.2, 0.4) * 0.05;
-	Light sun = Light(
-		vec3(0.9, 0.3, 0.0), 
-		vec3(0, -1, 0)
-	);
-	Light sea = Light(
-		vec3(0.0, 0.3, 0.5) * 0.2,
-		vec3(0, -1, 0)
-	);
 
 
 	f_color = vec4(base_color 

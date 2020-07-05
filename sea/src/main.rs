@@ -13,7 +13,12 @@ use vulkano::{
         ComputePipeline,
 		vertex::{
 			SingleBufferDefinition
-		}
+		},
+        blend::{
+            AttachmentBlend, 
+            BlendFactor, 
+            BlendOp, 
+        }
     },
 
     device::{
@@ -25,7 +30,7 @@ use vulkano::{
         Framebuffer, 
         FramebufferAbstract, 
         Subpass, 
-        RenderPassAbstract
+        RenderPassAbstract,
     },
 
     image::{
@@ -34,6 +39,7 @@ use vulkano::{
         ImmutableImage, 
         StorageImage,
         ImageUsage,
+        AttachmentImage,
     },
 
     sampler::{
@@ -224,11 +230,17 @@ fn main() {
                 store: Store,
                 format: swapchain.format(),
                 samples: 1,
+            },
+            depth: {
+                load: Clear, 
+                store: DontCare, 
+                format: Format::D16Unorm, 
+                samples: 1, 
             }
         },
         pass: {
             color: [color],
-            depth_stencil: {}
+            depth_stencil: {depth}
         }
     ).unwrap());
 
@@ -353,7 +365,8 @@ fn main() {
         .point_list()
         .viewports_dynamic_scissors_irrelevant(1)
         .fragment_shader(fish_fs.main_entry_point(), ())
-        .blend_alpha_blending()
+        .depth_stencil_simple_depth()
+        .blend_pass_through()
         .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
         .build(device.clone())
         .unwrap()
@@ -369,6 +382,19 @@ fn main() {
         .triangle_strip()
         .viewports_dynamic_scissors_irrelevant(1)
         .fragment_shader(sky_fs.main_entry_point(), ())
+        .blend_collective(AttachmentBlend {
+            enabled: true, 
+            color_op: BlendOp::Add,
+            color_source: BlendFactor::OneMinusDstAlpha, 
+            color_destination: BlendFactor::DstAlpha,
+            alpha_op: BlendOp::Max, 
+            alpha_source: BlendFactor::One, 
+            alpha_destination: BlendFactor::One,
+            mask_red: true, 
+            mask_green: true, 
+            mask_blue: true, 
+            mask_alpha: true
+        })
         .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
         .build(device.clone())
         .unwrap()
@@ -554,7 +580,11 @@ fn main() {
         reference: None 
     }; 
     
-    let mut framebuffers = window_size_dependent_setup(&images, render_pass.clone(), &mut dynamic_state); 
+    let mut framebuffers = window_size_dependent_setup(device.clone(),
+         &images,
+         render_pass.clone(),
+         &mut dynamic_state
+    ); 
 
     let mut recreate_swapchain = false; 
 
@@ -599,7 +629,11 @@ fn main() {
                     }; 
 
                     swapchain = new_swapchain; 
-                    framebuffers = window_size_dependent_setup(&new_images, render_pass.clone(), &mut dynamic_state); 
+                    framebuffers = window_size_dependent_setup(device.clone(),
+						 &new_images,
+						 render_pass.clone(),
+						 &mut dynamic_state
+                    ); 
                     recreate_swapchain = false; 
                 }
 
@@ -622,11 +656,11 @@ fn main() {
                 let time = (now.duration_since(t0).unwrap().as_millis() % (1000 * 60 * 60 * 24 * 365)) as f32 * 0.001;
                 let dtime = now.duration_since(then).unwrap().as_millis() as f32 * 0.001;
 
-                let angle = cgmath::Deg(time * 5.0);
-                let updown = cgmath::Deg(time * 10.0).sin();
+                let angle = cgmath::Deg(time * 2.0);
+                let updown = cgmath::Deg(time * 4.0).sin();
                 let camera = Point3::new(
                     angle.sin() * 1.0, 
-                    updown * 2.0, 
+                    updown * 0.5, 
                     angle.cos() * 1.0
                 );
                 let center = Point3::new(0.0, 0.0, 0.0);
@@ -666,7 +700,7 @@ fn main() {
                     dummy2: 0.0,
                 };
 
-                let clear_values = vec!([0.03, 0.13, 0.3, 1.0].into()); 
+                let clear_values = vec!([0.03, 0.13, 0.3, 0.0].into(), 1f32.into()); 
                 let command_buffer = AutoCommandBufferBuilder::primary_one_time_submit(
                     device.clone(), 
                     queue.family()
@@ -689,13 +723,6 @@ fn main() {
                     .begin_render_pass(framebuffers[image_num].clone(), false, clear_values)
 					.unwrap()
                     .draw(
-                        sky_pipeline.clone(),
-                        &dynamic_state, 
-                        sky_vb.clone(),
-                        (), 
-                        sky_push_constants,
-                    ).unwrap()
-                    .draw(
                         fish_pipeline.clone(), 
                         &dynamic_state, 
                         fish_vertex_buffer.clone(), 
@@ -703,12 +730,19 @@ fn main() {
                         fish_push_constants
                     ).unwrap()
                     .draw(
-                        debug_draw_flux_pipeline.clone(), 
+                        sky_pipeline.clone(),
                         &dynamic_state, 
-                        debug_draw_flux_vertex_buffer.clone(), 
-                        debug_draw_flux_desc_set.clone(), 
-                        ()
+                        sky_vb.clone(),
+                        (), 
+                        sky_push_constants,
                     ).unwrap()
+                    //.draw(
+                    //    debug_draw_flux_pipeline.clone(), 
+                    //    &dynamic_state, 
+                    //    debug_draw_flux_vertex_buffer.clone(), 
+                    //    debug_draw_flux_desc_set.clone(), 
+                    //    ()
+                    //).unwrap()
                     .end_render_pass()
                     .unwrap()
                     .build()
@@ -754,11 +788,15 @@ fn random_point_in_sphere<T: Rng>(rng: &mut T) -> [f32; 3] {
 }
 
 fn window_size_dependent_setup(
+    device: Arc<Device>, 
     images: &[Arc<SwapchainImage<Window>>], 
     render_pass: Arc<dyn RenderPassAbstract + Send + Sync>, 
     dynamic_state: &mut DynamicState
 ) -> Vec<Arc<dyn FramebufferAbstract + Send + Sync>> {
     let dimensions = images[0].dimensions(); 
+
+    let depth_buffer = 
+        AttachmentImage::transient(device.clone(), dimensions, Format::D16Unorm).unwrap(); 
 
     let viewport = Viewport {
         origin: [0.0, 0.0],
@@ -772,6 +810,7 @@ fn window_size_dependent_setup(
         Arc::new(
             Framebuffer::start(render_pass.clone())
                 .add(image.clone()).unwrap()
+                .add(depth_buffer.clone()).unwrap()
                 .build().unwrap()
         ) as Arc<dyn FramebufferAbstract + Send + Sync>
     }).collect::<Vec<_>>()

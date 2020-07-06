@@ -4,8 +4,6 @@ use image::{
     Rgba, 
     Luma, 
     imageops, 
-    GenericImageView,
-    Pixel, 
     imageops::{
         FilterType,
     },
@@ -192,8 +190,8 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let option = load_fish_skin("./IMG_1539-small.JPG".into());
-        // let option = load_fish_skin("./IMG_1540.JPG".into());
+        //let option = load_fish_skin("./IMG_1539-small.JPG".into());
+        let option = load_fish_skin("./IMG_1540.JPG".into());
         assert!(option.is_ok()); 
         let (colors, normals) = option.unwrap(); 
         normals.save("./test_normals.png").unwrap();

@@ -148,16 +148,16 @@ vulkano::impl_vertex!(VertexTwoDTex, position, uv);
 
 fn main() {
     const FLUX_RES: u32 = 32; 
-	const PARTICLE_COUNT: usize = 256; //1024 - vielleicht 256 pro spezies?  
+	const PARTICLE_COUNT: usize = 512; //1024 - vielleicht 256 pro spezies?  
 
 	let mut rng = thread_rng();
 
-    let fish_colors = match image::open("./fish/0002-colors.png") {
+    let fish_colors = match image::open("./fish/0001-colors.png") {
         Ok(image) => image, 
         Err(err) => panic!("{:?}", err)
     };
 
-    let fish_normals = match image::open("./fish/0002-normals.png") {
+    let fish_normals = match image::open("./fish/0001-normals.png") {
         Ok(image) => image, 
         Err(err) => panic!("{:?}", err)
     };
@@ -513,9 +513,9 @@ fn main() {
 	// TODO: use DeviceLocalBuffer
 	for i in 0..particle_data.len() {
 		particle_data[i].position 	= random_point_in_sphere(&mut rng); 
-        particle_data[i].size = rng.gen_range(0.03, 0.07); 
 		particle_data[i].offset 	= random_point_in_sphere(&mut rng); 
         particle_data[i].drift 		= random_point_in_sphere(&mut rng);
+        particle_data[i].size = rng.gen_range(0.07, 0.13); 
 	}
 	let fish_particle_buffer = CpuAccessibleBuffer::from_iter(
 		device.clone(),
@@ -683,12 +683,12 @@ fn main() {
                 let time = (now.duration_since(t0).unwrap().as_millis() % (1000 * 60 * 60 * 24 * 365)) as f32 * 0.001;
                 let dtime = now.duration_since(then).unwrap().as_millis() as f32 * 0.001;
 
-                let angle = cgmath::Deg(time * 2.0);
+                let angle = cgmath::Deg(time * 1.0);
                 let updown = cgmath::Deg(time * 4.0).sin();
-                let r = 0.5;
+                let r = cgmath::Deg(time * 2.0).sin() * 0.2 + 1.2;
                 let camera = Point3::new(
                     angle.sin() * r, 
-                    updown * 0.1, 
+                    updown * 0.5, 
                     angle.cos() * r
                 );
                 let center = Point3::new(0.0, 0.0, 0.0);

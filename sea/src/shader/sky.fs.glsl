@@ -24,6 +24,10 @@ Light sea = Light(
 	vec3(0.0, 0.3, 0.5) * 0.4,
 	vec3(0, -1, 0)
 );
+Light white = Light(
+	vec3(1.0, 1.0, 1.0) * 0.4,
+	normalize(vec3(-1, 0.5, 0))
+);
 
 const float FRUSTUM_HALF = 0.1; 
 const float FRUSTUM_NCP = 0.01;

@@ -29,9 +29,9 @@ layout(set = 0, binding = 2) buffer writeonly Vertices {
 	Vertex vertices[];
 }; 
 
-const float speed = 0.1; 
-const float drift_factor = 0.15; // a bigger drift factor leads to more individual fish paths
-const float noisyness = 0.8; // later based on species
+const float speed = 0.3; //1.0; 
+const float drift_factor = 0.11; // a bigger drift factor leads to more individual fish paths
+const float noisyness = 0.2; // later based on species
 
 void main() {
 	uint id = gl_GlobalInvocationID.x; 

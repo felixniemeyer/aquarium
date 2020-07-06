@@ -10,53 +10,36 @@ layout(push_constant) uniform PushConstantData {
 layout(location = 0) in vec4 position; 
 layout(location = 1) in vec4 tail; 
 
-layout(location = 0) out vec3 rear; 
-layout(location = 1) out vec3 down; 
-layout(location = 2) out vec3 side; 
-layout(location = 3) out float speed; 
-layout(location = 4) out vec4 lighting; 
+layout(location = 0) out mat4 rotation; 
+layout(location = 4) out vec4 look_from; 
 
 const vec3 UP = vec3(0, -1, 0);
-const float FOG_AMOUNT = 0.3;
-
-struct Light {
-	vec3 color; 
-	vec3 normal;
-	float e; 
-};
-const Light sun = Light(
-	vec3(0.9, 0.3, 0.0), 
-	vec3(0, -1, 0),
-	2.0
-);
-const Light sea = Light(
-	vec3(0.0, 0.3, 0.5) * 0.4,
-	vec3(0, -1, 0),
-	1.0
-);
+const float FOG_AMOUNT = 0.5;
 
 void main() { 
 	gl_Position = position;  
 
 	vec3 view_direction = position.xyz - pc.cameraPos;
 	float cam_distance = length(view_direction); 
-	view_direction /= cam_distance; // normalize
-	
-	lighting.rgb = vec3(0.3,0.3,0.3) 
-		 + sun.color * pow(dot(-sun.normal, view_direction) * 0.5 + 0.5, sun.e);
-		 + sea.color * pow(dot(-sea.normal, view_direction) * 0.5 + 0.5, sea.e);
+	look_from.rgb = view_direction / cam_distance; // normalize
+	look_from.a = 1.0 / (1.0 + FOG_AMOUNT * cam_distance);
 
-	lighting.a = 1.0 / (1.0 + FOG_AMOUNT * cam_distance);
-
-	speed = tail.w; 
-	rear = tail.xyz / tail.w; 
-	side = normalize(cross(
+	/////
+	vec3 rear = tail.xyz / tail.w; 
+	vec3 side = normalize(cross(
 		rear,
 		UP
 	));
-	down = normalize(cross(
+	vec3 down = normalize(cross(
 		rear, 
 		side
 	));
+
+	rotation = mat4(
+		vec4(rear, 0),
+		vec4(down, 0),
+		vec4(side, 0),
+		vec4(0, 0, 0, 1)
+	); 
 }
 

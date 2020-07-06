@@ -439,6 +439,7 @@ fn main() {
     ).unwrap();
 
     let img_dim = img.dimensions();
+    
     let (autumn_texture, autumn_texture_future) = match ImmutableImage::from_iter(
         img.as_rgba8().unwrap().pixels().map(|rgba| {
             let bytes : [u8; 4] = [rgba[0], rgba[1], rgba[2], rgba[3]]; 

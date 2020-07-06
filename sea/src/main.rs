@@ -148,11 +148,16 @@ vulkano::impl_vertex!(VertexTwoDTex, position, uv);
 
 fn main() {
     const FLUX_RES: u32 = 32; 
-	const PARTICLE_COUNT: usize = 1024; 
+	const PARTICLE_COUNT: usize = 256; //1024 - vielleicht 256 pro spezies?  
 
 	let mut rng = thread_rng();
 
-    let img = match image::open("./fish/skin-0001.png") {
+    let fish_colors = match image::open("./fish/0002-colors.png") {
+        Ok(image) => image, 
+        Err(err) => panic!("{:?}", err)
+    };
+
+    let fish_normals = match image::open("./fish/0002-normals.png") {
         Ok(image) => image, 
         Err(err) => panic!("{:?}", err)
     };
@@ -372,9 +377,6 @@ fn main() {
         .unwrap()
     ); 
 
-    let fish_skin_sampler = Sampler::new(device.clone(), Filter::Linear, Filter::Linear, 
-        MipmapMode::Nearest, SamplerAddressMode::Repeat, SamplerAddressMode::Repeat, 
-        SamplerAddressMode::Repeat, 0.0, 1.0, 0.0, 0.0).unwrap(); 
 
     let sky_pipeline = Arc::new(GraphicsPipeline::start()
         .vertex_input(SingleBufferDefinition::<VertexTwoDTex>::new())
@@ -438,24 +440,46 @@ fn main() {
         vertex_data.iter().cloned()
     ).unwrap();
 
-    let img_dim = img.dimensions();
-    
-    let (autumn_texture, autumn_texture_future) = match ImmutableImage::from_iter(
-        img.as_rgba8().unwrap().pixels().map(|rgba| {
-            let bytes : [u8; 4] = [rgba[0], rgba[1], rgba[2], rgba[3]]; 
-            bytes
-        }),
-        Dimensions::Dim2d { width: img_dim.0, height: img_dim.1 },
-        Format::R8G8B8A8Unorm, 
-        queue.clone()
-    ) {
-        Ok(i) => i, 
-        Err(err) => panic!("{:?}", err)
+    let (fish_colors_texture, fish_colors_future) = {
+        let img_dim = fish_colors.dimensions();
+        match ImmutableImage::from_iter(
+            fish_colors.as_rgba8().unwrap().pixels().map(|rgba| {
+                let bytes : [u8; 4] = [rgba[0], rgba[1], rgba[2], rgba[3]]; 
+                bytes
+            }),
+            Dimensions::Dim2d { width: img_dim.0, height: img_dim.1 },
+            Format::R8G8B8A8Unorm, 
+            queue.clone()
+        ) {
+            Ok(i) => i, 
+            Err(err) => panic!("{:?}", err)
+        }
     };
 
-	let fish_pipeline_layout = fish_pipeline.layout().descriptor_set_layout(0).unwrap(); 
+    let (fish_normals_texture, fish_normals_future) = {
+        let img_dim = fish_normals.dimensions();
+        match ImmutableImage::from_iter(
+            fish_normals.as_rgb8().unwrap().pixels().map(|rgb| {
+                let bytes : [u8; 4] = [rgb[0], rgb[1], rgb[2], 255]; 
+                bytes
+            }),
+            Dimensions::Dim2d { width: img_dim.0, height: img_dim.1 },
+            Format::R8G8B8A8Unorm, 
+            queue.clone()
+        ) {
+            Ok(i) => i, 
+            Err(err) => panic!("{:?}", err)
+        }
+    };
+
+
+    let fish_skin_sampler = Sampler::new(device.clone(), Filter::Linear, Filter::Linear,
+        MipmapMode::Nearest, SamplerAddressMode::Repeat, SamplerAddressMode::Repeat, 
+        SamplerAddressMode::Repeat, 0.0, 1.0, 0.0, 0.0).unwrap(); 
+	let fish_pipeline_layout = fish_pipeline.layout().descriptor_set_layout(0).unwrap();
     let fish_desc_set = Arc::new(PersistentDescriptorSet::start(fish_pipeline_layout.clone())
-        .add_sampled_image(autumn_texture.clone(), fish_skin_sampler.clone()).unwrap()
+        .add_sampled_image(fish_colors_texture.clone(), fish_skin_sampler.clone()).unwrap()
+        .add_sampled_image(fish_normals_texture.clone(), fish_skin_sampler.clone()).unwrap()
         .build().unwrap()
     );
 
@@ -589,7 +613,9 @@ fn main() {
 
     let mut recreate_swapchain = false; 
 
- 	let mut previous_frame_end = Some(Box::new(sync::now(device.clone()).join(autumn_texture_future)) as Box<dyn GpuFuture>); 
+ 	let mut previous_frame_end = Some(
+        Box::new(sync::now(device.clone())
+        .join(fish_colors_future.join(fish_normals_future))) as Box<dyn GpuFuture>); 
 
     let t0 = time::SystemTime::now(); 
     let mut now = t0; 
@@ -659,10 +685,11 @@ fn main() {
 
                 let angle = cgmath::Deg(time * 2.0);
                 let updown = cgmath::Deg(time * 4.0).sin();
+                let r = 0.5;
                 let camera = Point3::new(
-                    angle.sin() * 1.0, 
-                    updown * 0.5, 
-                    angle.cos() * 1.0
+                    angle.sin() * r, 
+                    updown * 0.1, 
+                    angle.cos() * r
                 );
                 let center = Point3::new(0.0, 0.0, 0.0);
                 let up = Vector3::new(0.0, 1.0, 0.0);

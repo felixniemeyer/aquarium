@@ -48,7 +48,7 @@ pub fn load_fish_skin(path: String) -> Result<(ImageBuffer<Rgba<u8>, Vec<u8>>, I
 
 
                     let center:[u32; 2] = [(l + r) / 2, (t + b) / 2]; 
-                    let mut side = (r - l).max(b - t) as i32;
+                    let mut side = (r - l).max(b - t) as i32 + 20;
                     side += side % 2; 
                     let square_l = center[0] as i32 - side / 2;
                     let square_t = center[1] as i32 - side / 2;
@@ -192,8 +192,8 @@ mod tests {
 
     #[test]
     fn it_works() {
-        //let option = load_fish_skin("./IMG_1539-small.JPG".into());
-        let option = load_fish_skin("./IMG_1540.JPG".into());
+        let option = load_fish_skin("./IMG_1539-small.JPG".into());
+        // let option = load_fish_skin("./IMG_1540.JPG".into());
         assert!(option.is_ok()); 
         let (colors, normals) = option.unwrap(); 
         normals.save("./test_normals.png").unwrap();

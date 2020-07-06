@@ -29,9 +29,9 @@ layout(set = 0, binding = 2) buffer writeonly Vertices {
 	Vertex vertices[];
 }; 
 
-const float acceleration = 0.1; 
+const float speed = 0.1; 
 const float drift_factor = 0.15; // a bigger drift factor leads to more individual fish paths
-const float noisyness = 0.2; // later based on species
+const float noisyness = 0.8; // later based on species
 
 void main() {
 	uint id = gl_GlobalInvocationID.x; 
@@ -39,9 +39,10 @@ void main() {
 	vec3 stream = texture(flux, particles[id].position.xyz * 0.5 + 0.5).rgb;
 	stream.g *= 0.5; //fish don't move so much along this axis
 
-	vec3 v = stream
+	vec3 v = speed * (stream
 		+ particles[id].drift.xyz * drift_factor
-		- particles[id].position.xyz * noisyness;
+		- particles[id].position.xyz * noisyness
+	);
 
 	particles[id].position.xyz += v * pc.dtime; 
 	vertices[id].position.xyz = particles[id].position.xyz + particles[id].offset.xyz * 0.1; 

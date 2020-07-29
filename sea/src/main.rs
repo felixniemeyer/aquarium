@@ -148,16 +148,16 @@ vulkano::impl_vertex!(VertexTwoDTex, position, uv);
 
 fn main() {
     const FLUX_RES: u32 = 32; 
-	const PARTICLE_COUNT: usize = 512; //1024 - vielleicht 256 pro spezies?  
+	const PARTICLE_COUNT: usize = 2048; //1024 - vielleicht 256 pro spezies?  
 
 	let mut rng = thread_rng();
 
-    let fish_colors = match image::open("./fish/0001-colors.png") {
+    let fish_colors = match image::open("./fish/0003-colors.png") {
         Ok(image) => image, 
         Err(err) => panic!("{:?}", err)
     };
 
-    let fish_normals = match image::open("./fish/0001-normals.png") {
+    let fish_normals = match image::open("./fish/0003-normals.png") {
         Ok(image) => image, 
         Err(err) => panic!("{:?}", err)
     };
@@ -685,10 +685,10 @@ fn main() {
 
                 let angle = cgmath::Deg(time * 1.0);
                 let updown = cgmath::Deg(time * 4.0).sin();
-                let r = cgmath::Deg(time * 2.0).sin() * 0.2 + 1.2;
+                let r = cgmath::Deg(time * 5.0).sin() * 0.5 + 2.5;
                 let camera = Point3::new(
                     angle.sin() * r, 
-                    updown * 0.5, 
+                    updown * 1.5, 
                     angle.cos() * r
                 );
                 let center = Point3::new(0.0, 0.0, 0.0);

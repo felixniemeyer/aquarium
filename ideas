@@ -8,11 +8,15 @@
 			--no-keep
 		- auto-Abschalten deaktivieren. Sonst disconnected sie usb 
 
-- fish photo processing: 
-	- python + pillow => PIL.Image.composite
-	- then transform to 1024x1024 png
+- fish photo processing: ("scanner")
+	- Verworfen: 
+		- python + pillow => PIL.Image.composite
+		- then transform to 1024x1024 png
+	- Stattdessen: 
+		- in Rust, geht gut. 
+		- Erlaube variablen Fisch-umriss durch background removal
 
-- load into fish styler
+- load into fish styler (web app, executes "take photo", shows foto, "select background color", executes rust script, moves folder to "sea" program)
 	- appearance: 
 		- skin color
 		- all axis scale
@@ -35,4 +39,8 @@
 		- out
 			- updated particle data
 			- vertex data 
-				
+	- Pro Spezies: 
+		- Partikel Buffer
+		- Vertex Buffer
+		- Draw Call 
+		- (vielleicht sogar ein eigenes noise... Aber cooler wäre wahrscheinlich ein globales noise + dann noch ein offset und drift auf Spezies-ebene ;)				

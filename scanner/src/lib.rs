@@ -11,7 +11,7 @@ use image::{
 };
 
 const BG_COLOR: Rgb<u8> = Rgb([20,20,20]);
-const COL_DISTANCE_SQUARED: u32 = 45 * 45;
+const COL_DISTANCE_SQUARED: u32 = 25 * 25;
 
 pub fn load_fish_skin(path: String) -> Result<(ImageBuffer<Rgba<u8>, Vec<u8>>, ImageBuffer<Rgb<u8>, Vec<u8>>), String> {
     match image::open(path) {
@@ -27,7 +27,7 @@ pub fn load_fish_skin(path: String) -> Result<(ImageBuffer<Rgba<u8>, Vec<u8>>, I
                             Luma([std::u16::MAX])
                         }
                     });
-                    let mut blurred_mask = imageops::blur(&mask, 3.4); 
+                    let mut blurred_mask = imageops::blur(&mask, 3.0); 
                     let mut l = dim.1;
                     let mut r = 0;
                     let mut t = dim.1;
@@ -191,7 +191,7 @@ mod tests {
     #[test]
     fn it_works() {
         //let option = load_fish_skin("./IMG_1539-small.JPG".into());
-        let option = load_fish_skin("./IMG_1540.JPG".into());
+        let option = load_fish_skin("./IMG_1564.JPG".into());
         assert!(option.is_ok()); 
         let (colors, normals) = option.unwrap(); 
         normals.save("./test_normals.png").unwrap();

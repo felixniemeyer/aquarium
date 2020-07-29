@@ -515,7 +515,7 @@ fn main() {
 		particle_data[i].position 	= random_point_in_sphere(&mut rng); 
 		particle_data[i].offset 	= random_point_in_sphere(&mut rng); 
         particle_data[i].drift 		= random_point_in_sphere(&mut rng);
-        particle_data[i].size = rng.gen_range(0.07, 0.13); 
+        particle_data[i].size = rng.gen_range(0.07, 0.13) * 0.5; 
 	}
 	let fish_particle_buffer = CpuAccessibleBuffer::from_iter(
 		device.clone(),
@@ -685,7 +685,7 @@ fn main() {
 
                 let angle = cgmath::Deg(time * 1.0);
                 let updown = cgmath::Deg(time * 4.0).sin();
-                let r = cgmath::Deg(time * 5.0).sin() * 0.5 + 2.5;
+                let r = cgmath::Deg(time * 5.0).sin() * 0.5 + 1.5;
                 let camera = Point3::new(
                     angle.sin() * r, 
                     updown * 1.5, 

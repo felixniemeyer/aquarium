@@ -44,8 +44,8 @@ void main() {
 		}
 		vec3 n = (rotation * normal).xyz;
 		vec4 light = vec4(
-//			- n * 0.5 + vec3(0.5)
-			+ vec3(0.4)
+			- n * 0.4 + vec3(0.5)
+			+ vec3(0.1)
 			+ pow(dot(n, -sun.normal) * 0.5 + 0.5, sun.exponent) * sun.color * 2
 			+ pow(dot(n, -sea.normal) * 0.5 + 0.5, sea.exponent) * sea.color
 			 + pow(smoothstep(0.9,1.0,dot(normalize(-look_from.xyz + vec3(1,0.25,0)), n) * 0.5 + 0.5), 4.0) * 5* vec3(1,1,1) 

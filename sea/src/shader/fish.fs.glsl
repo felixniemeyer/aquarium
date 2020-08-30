@@ -43,6 +43,14 @@ void main() {
 			normal.z = -normal.z;
 		}
 		vec3 n = (rotation * normal).xyz;
+
+		vec4 light = vec4(
+			// (n * 0.5 + 0.5) 
+			vec3(0.5) 
+			+ dot(n, -sun.normal) * (sun.color - sea.color)
+		, look_from.a); 
+
+		/*
 		vec4 light = vec4(
 			- n * 0.4 + vec3(0.5)
 			+ vec3(0.1)
@@ -52,6 +60,7 @@ void main() {
 			// + pow(smoothstep(0.9,1.0,dot(normalize(look_from.xyz + sun.normal), n) * 0.5 + 0.5), 4.0) * sun.color * 3.0
 			// + pow(smoothstep(0.7, 1.0, dot(n, -look_from.rgb) * 0.5 + 0.5), 4) * vec3(0.2)
 		, look_from.a);
+		*/
 
 		f_color = c * light;
 	}

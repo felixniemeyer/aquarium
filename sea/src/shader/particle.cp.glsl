@@ -30,8 +30,9 @@ layout(set = 0, binding = 2) buffer writeonly Vertices {
 }; 
 
 const float speed = 1.0; 
-const float drift_factor = 0.15; // a bigger drift factor leads to more individual fish paths
-const float noisyness = 0.16; // later based on species
+const float drift_factor = 0.07; // a bigger drift factor leads to more individual fish paths
+const float offset_factor = 0.03; 
+const float noisyness = 0.2; // later based on species
 
 void main() {
 	uint id = gl_GlobalInvocationID.x; 
@@ -45,7 +46,7 @@ void main() {
 	);
 
 	particles[id].position.xyz += v * pc.dtime; 
-	vertices[id].position.xyz = particles[id].position.xyz + particles[id].offset.xyz * 0.1; 
+	vertices[id].position.xyz = particles[id].position.xyz + particles[id].offset.xyz * offset_factor; 
 	vertices[id].position.a = particles[id].position.a;
 
 	v.y *= 0.5;

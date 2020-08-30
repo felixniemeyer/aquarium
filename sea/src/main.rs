@@ -683,12 +683,12 @@ fn main() {
                 let time = (now.duration_since(t0).unwrap().as_millis() % (1000 * 60 * 60 * 24 * 365)) as f32 * 0.001;
                 let dtime = now.duration_since(then).unwrap().as_millis() as f32 * 0.001;
 
-                let angle = cgmath::Deg(time * 1.0);
+                let angle = cgmath::Deg(time * 20.0);
                 let updown = cgmath::Deg(time * 4.0).sin();
                 let r = cgmath::Deg(time * 5.0).sin() * 0.5 + 1.5;
                 let camera = Point3::new(
                     angle.sin() * r, 
-                    updown * 1.5, 
+                    updown * 0.5, 
                     angle.cos() * r
                 );
                 let center = Point3::new(0.0, 0.0, 0.0);

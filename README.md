@@ -1,5 +1,8 @@
 # aquarium
 
+## presentation video
+[![watch a presentation](https://img.youtube.com/vi/5SW9_pk5zME/maxresdefault.jpg)](https://youtu.be/5SW9_pk5zME)
+
 ## build & run
 
 `cd ./sea`

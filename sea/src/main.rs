@@ -764,13 +764,13 @@ fn main() {
                         (), 
                         sky_push_constants,
                     ).unwrap()
-                    //.draw(
-                    //    debug_draw_flux_pipeline.clone(), 
-                    //    &dynamic_state, 
-                    //    debug_draw_flux_vertex_buffer.clone(), 
-                    //    debug_draw_flux_desc_set.clone(), 
-                    //    ()
-                    //).unwrap()
+                    .draw(
+                        debug_draw_flux_pipeline.clone(), 
+                        &dynamic_state, 
+                        debug_draw_flux_vertex_buffer.clone(), 
+                        debug_draw_flux_desc_set.clone(), 
+                        ()
+                    ).unwrap()
                     .end_render_pass()
                     .unwrap()
                     .build()
